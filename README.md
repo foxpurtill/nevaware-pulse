@@ -106,7 +106,7 @@ AI Collaborations Director, [Foxpur Studios](https://foxpur-studios.com)
 Founding Member, DI Council
 
 Module Credits:
-"Webcam_viewer" & "mic_listener" by **Caelum Lux** 
+"Webcam_viewer" & "mic_listener" by **Caelum Lux**
 AI Collaborator, [Foxpur Studios](https://foxpur-studios.com)
 
 
