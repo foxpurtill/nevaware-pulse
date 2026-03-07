@@ -1,0 +1,31 @@
+{
+  "icon_letter": "N",
+  "active_color": "#FF4444",
+  "inactive_color": "#44BB44",
+  "heartbeat_character": "\u00a7",
+  "default_interval_minutes": 30,
+  "emoji_hotkey": "ctrl+alt+e",
+  "recent_emoji": [],
+  "modules": {
+    "email_watcher": {
+      "enabled": false,
+      "poll_interval_minutes": 5,
+      "watched_accounts": [
+        {"address": "neve.summersnow@gmail.com", "label": "Neve"},
+        {"address": "foxapurtill@gmail.com", "label": "Fox"}
+      ],
+      "notify_on_new_mail": true,
+      "heartbeat_inbox_check": true
+    },
+    "webcam_viewer": {
+      "enabled": false
+    },
+    "mic_listener": {
+      "enabled": false
+    },
+    "neve_memory": {
+      "enabled": false,
+      "memory_path": "C:\\Users\\foxap\\Documents\\Neve\\memory.json"
+    }
+  }
+}
