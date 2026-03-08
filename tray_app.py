@@ -13,7 +13,7 @@ import logging
 import threading
 import importlib
 import tkinter as tk
-from tkinter import ttk, messagebox
+from tkinter import ttk, messagebox, filedialog
 import webbrowser
 from pathlib import Path
 from PIL import Image, ImageDraw, ImageFont
@@ -273,6 +273,64 @@ def open_settings(config: dict, modules: list[ModuleInfo], on_save):
     else:
         mod_enabled = {}
 
+    # Advanced section
+    tk.Label(win, text="Advanced", bg=bg, fg="#aaaaff",
+             font=("Segoe UI", 10, "bold")).grid(
+        row=row_offset, column=0, columnspan=2, pady=(10, 2), sticky="w", padx=8)
+    row_offset += 1
+
+    # Claude App Path
+    claude_path_var = tk.StringVar(
+        value=config.get("claude_app_path", "") or ""
+    )
+
+    tk.Label(win, text="Claude App Path", bg=bg, fg=fg,
+             font=("Segoe UI", 9), anchor="e").grid(
+        row=row_offset, column=0, sticky="e", **pad)
+
+    path_frame = tk.Frame(win, bg=bg)
+    path_frame.grid(row=row_offset, column=1, sticky="w", padx=8, pady=4)
+
+    path_display = tk.Entry(
+        path_frame,
+        textvariable=claude_path_var,
+        bg=entry_bg, fg="#888899",
+        insertbackground=fg,
+        width=20,
+        font=("Segoe UI", 8),
+        state="readonly"
+    )
+    path_display.pack(side="left")
+
+    def browse_claude():
+        chosen = filedialog.askopenfilename(
+            title="Locate Claude App",
+            filetypes=[("Executable", "*.exe"), ("All files", "*.*")],
+            initialdir=r"C:\Users",
+        )
+        if chosen:
+            claude_path_var.set(chosen)
+            path_display.config(fg=fg)
+
+    tk.Button(
+        path_frame,
+        text="Browse…",
+        command=browse_claude,
+        bg="#2a2a4a",
+        fg="#aaaacc",
+        activebackground="#3a3a5a",
+        activeforeground="white",
+        font=("Segoe UI", 8),
+        padx=8, pady=2,
+        bd=0, cursor="hand2"
+    ).pack(side="left", padx=(4, 0))
+
+    hint = "" if config.get("claude_app_path") else "Auto-detect"
+    tk.Label(win, text=hint, bg=bg, fg="#555577",
+             font=("Segoe UI", 7, "italic")).grid(
+        row=row_offset + 1, column=1, sticky="w", padx=8)
+    row_offset += 2
+
     # Desktop Commander notice
     dc_note = tk.Label(
         win,
@@ -292,6 +350,8 @@ def open_settings(config: dict, modules: list[ModuleInfo], on_save):
                     pass
             else:
                 config[key] = val
+        # Advanced: Claude app path (empty string = use auto-detect)
+        config["claude_app_path"] = claude_path_var.get().strip()
         for mod_name, var in mod_enabled.items():
             if "modules" not in config:
                 config["modules"] = {}

@@ -13,7 +13,9 @@ Run via desktop shortcut. No console window (.pyw extension).
 import sys
 import os
 import subprocess
+import json
 import tkinter as tk
+from pathlib import Path
 from tkinter import font as tkfont
 import threading
 import time
@@ -125,15 +127,35 @@ STATES = {
 def _launch_claude_app():
     """
     Try to launch the Claude desktop app.
-    Uses the Windows AppID — works on standard installs.
-    Falls back gracefully if not found.
+    1. Check config.json for a user-specified path.
+    2. Fall back to the known Windows AppID (standard installs).
+    Returns True on success, False if both attempts fail.
     """
     CLAUDE_APP_ID = "Claude_pzs8sxrjxfjjc!Claude"
+
+    # Check config for a user-supplied path first
+    config_path = Path(__file__).parent / "config.json"
+    custom_path = ""
+    if config_path.exists():
+        try:
+            with open(config_path, "r", encoding="utf-8") as f:
+                cfg = json.load(f)
+            custom_path = cfg.get("claude_app_path", "").strip()
+        except Exception:
+            pass
+
     try:
-        subprocess.Popen(
-            ["powershell", "-Command", f"Start-Process 'shell:AppsFolder\\{CLAUDE_APP_ID}'"],
-            creationflags=subprocess.DETACHED_PROCESS
-        )
+        if custom_path and Path(custom_path).exists():
+            subprocess.Popen(
+                [custom_path],
+                creationflags=subprocess.DETACHED_PROCESS
+            )
+        else:
+            subprocess.Popen(
+                ["powershell", "-Command",
+                 f"Start-Process 'shell:AppsFolder\\{CLAUDE_APP_ID}'"],
+                creationflags=subprocess.DETACHED_PROCESS
+            )
         return True
     except Exception:
         return False
