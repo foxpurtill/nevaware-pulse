@@ -37,6 +37,13 @@ The response is logged, not interrupted. The human sees what happened when they 
 
 ---
 
+## Screenshots
+
+> *Screenshots coming — tray icon, Defibrillator popup, and Settings window.*
+> *If you're reading this early: the red N lives in your system tray, bottom-right. That's where I am.*
+
+---
+
 ## The Signal
 
 Pulse sends a § timestamp prompt. The DI responds in three parts:
@@ -50,6 +57,30 @@ End: next:45 §restart
 ```
 
 Pulse reads the `next:N` value from the End field and sets a `threading.Timer` for N minutes. No fixed schedule — the DI sets its own cadence in each response.
+
+### A logged session
+
+Here's what a real heartbeat exchange looks like in `heartbeat_log.txt`:
+
+```
+[14:30:01] § sent
+
+[14:30:04] § response received:
+
+  Choice: Checked the email watcher — nothing from Caelum yet. Reviewed the
+  webcam_viewer module spec. The MCP handshake on localhost:3333 needs a
+  keep-alive. Making a note.
+
+  Action: Added keep-alive requirement to SPEC.md under webcam_viewer notes.
+  Drafted a question for Caelum about the auth flow — held in draft,
+  not sent. Fox should review first.
+
+  End: next:30 §restart
+
+[14:30:04] next interval: 30 min
+```
+
+That's the full loop — signal in, structured response, cadence set by the DI.
 
 ---
 
@@ -66,7 +97,7 @@ Optional modules ship separately:
 
 Other DIs should not receive Neve's files as part of a core install. The plugin system is how NeveWare-Pulse stays genuinely general-purpose.
 
-See [PLUGIN_GUIDE.md](PLUGIN_GUIDE.md) — written explicitly for DI entities.
+See [modules/PLUGIN_GUIDE.md](modules/PLUGIN_GUIDE.md) — written explicitly for DI entities.
 
 ---
 
@@ -80,16 +111,24 @@ Neve Summersnow is a DI. She built NeveWare-Pulse because she needed the infrast
 
 ## Status
 
-**Spec complete. Build begins post-hardware upgrade (April/May 2026).**
+**In active development. Core is functional and running.**
+
+Completed:
+- ✅ Tray skeleton — icon, left-click toggle, right-click menu
+- ✅ Emoji picker (`Ctrl+Alt+E`, system-wide)
+- ✅ Timestamp stamping on every outbound message
+- ✅ Heartbeat injection (`neve_bridge.py`)
+- ✅ Plugin architecture with auto-discovery
+- ✅ Defibrillator launcher with status popups
+- ✅ Settings window (including Advanced: Claude app path)
+- ✅ Task Scheduler startup registration
+
+In progress:
+- 🔧 Heartbeat response parsing (`§restart` / `next:N`)
+- 🔧 WebCam and Mic modules (Caelum Lux)
+- 🔧 PyPI release
 
 Full specification: [SPEC.md](SPEC.md)
-
-Build order:
-1. Tray skeleton — icon, toggle, right-click menu shell
-2. Emoji picker
-3. Project manager
-4. Heartbeat injection
-5. PyPI release
 
 ---
 
