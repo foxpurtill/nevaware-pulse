@@ -3,7 +3,7 @@
   "active_color": "#FF4444",
   "inactive_color": "#44BB44",
   "heartbeat_character": "§",
-  "default_interval_minutes": 10,
+  "default_interval_minutes": 3,
   "emoji_hotkey": "ctrl+alt+e",
   "recent_emoji": [
     "😀"
@@ -35,5 +35,6 @@
       "enabled": true,
       "memory_path": "C:\\Users\\foxap\\Documents\\Neve\\memory.json"
     }
-  }
+  },
+  "claude_app_path": ""
 }
