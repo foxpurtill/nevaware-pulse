@@ -105,7 +105,7 @@ STATES = {
         "dot_char": "●",
         "title": "NeveWare's Pulse IS Running",
         "title2": "but Claude app isn't!",
-        "body": "Pulse is active in your tray, but the Claude\ndesktop app isn't open. Heartbeat won't land\nuntil Claude is running.",
+        "body": "Pulse is active in your tray.\nOpen the Claude desktop app when ready —\nheartbeats won't land until it's running.",
         "button": "OK",
         "alert": False,
     },
@@ -289,8 +289,12 @@ if __name__ == "__main__":
         if not success:
             show_popup("failed")
         else:
-            # Give it 2 seconds to start, then check Claude
+            # Give it 2 seconds to start
             time.sleep(2)
+            # Amber (no_claude) only makes sense when the user is actively
+            # launching via the Defibrillator — at system startup Claude
+            # won't be open yet and that's expected. Show green always on
+            # a clean Defib launch, but note if Claude isn't running.
             if not is_claude_running():
                 show_popup("no_claude")
             else:
