@@ -542,7 +542,7 @@ class PulseApp:
             Item("Settings", self._menu_settings),
             Item("About", self._menu_about),
             Menu.SEPARATOR,
-            Item("Quit", self._menu_quit),
+            Item("Quit (F10 Kill Switch)", self._menu_quit),
         ]
         return Menu(*items)
 
