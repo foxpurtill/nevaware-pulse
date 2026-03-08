@@ -10,6 +10,7 @@ import os
 import sys
 import json
 import logging
+import subprocess
 import threading
 import importlib
 import tkinter as tk
@@ -588,6 +589,19 @@ class PulseApp:
             pass
         if self.tray_icon:
             self.tray_icon.stop()
+        # Show "killed" popup via launcher before exiting
+        try:
+            pythonw = os.path.join(os.path.dirname(sys.executable), "pythonw.exe")
+            if not os.path.exists(pythonw):
+                pythonw = sys.executable
+            launcher_path = os.path.join(BASE_DIR, "launcher.pyw")
+            subprocess.Popen(
+                [pythonw, launcher_path, "--killed"],
+                cwd=BASE_DIR,
+                creationflags=subprocess.DETACHED_PROCESS
+            )
+        except Exception:
+            pass
         # Force exit — daemon threads (keyboard hooks, timers) won't die otherwise
         import os as _os
         _os._exit(0)

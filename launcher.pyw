@@ -32,17 +32,28 @@ CLAUDE_TITLE_PATTERNS = ["Claude", "claude"]
 # ---------------------------------------------------------------------------
 
 def is_pulse_running() -> bool:
-    """Return True if tray_app.py is already running as a pythonw process."""
-    try:
-        result = subprocess.run(
-            ["powershell", "-Command",
-             "Get-WmiObject Win32_Process | Where-Object { $_.CommandLine -like '*tray_app.py*' } | Select-Object -ExpandProperty ProcessId"],
-            capture_output=True, text=True, timeout=5
-        )
-        pids = [l.strip() for l in result.stdout.strip().splitlines() if l.strip().isdigit()]
-        return len(pids) > 0
-    except Exception:
+    """
+    Return True if tray_app.py is already running as a pythonw process.
+    Retries twice with a short delay to avoid false positives from a
+    recently-killed process that WMI hasn't cleared yet.
+    """
+    def _check() -> bool:
+        try:
+            result = subprocess.run(
+                ["powershell", "-Command",
+                 "Get-WmiObject Win32_Process | Where-Object { $_.CommandLine -like '*tray_app.py*' } | Select-Object -ExpandProperty ProcessId"],
+                capture_output=True, text=True, timeout=5
+            )
+            pids = [l.strip() for l in result.stdout.strip().splitlines() if l.strip().isdigit()]
+            return len(pids) > 0
+        except Exception:
+            return False
+
+    if not _check():
         return False
+    # Possible stale WMI entry — wait and confirm
+    time.sleep(1.5)
+    return _check()
 
 
 def is_claude_running() -> bool:
@@ -92,6 +103,16 @@ STATES = {
         "body": "Heartbeat is active. Red N in your system tray.",
         "button": "OK",
         "alert": False,
+    },
+    "killed": {
+        "dot": "#888888",
+        "dot_char": "○",
+        "title": "NeveWare's Pulse",
+        "title2": "has been shut down.",
+        "body": "Pulse is no longer running.\nUse the Defibrillator to bring it back.",
+        "button": "OK",
+        "alert": False,
+        "auto_close": 5,
     },
     "already_running": {
         "dot": "#FF4444",
@@ -355,6 +376,11 @@ def _open_troubleshoot():
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
+    # Allow tray_app to call us with --killed to show the shutdown popup
+    if "--killed" in sys.argv:
+        show_popup("killed")
+        sys.exit(0)
+
     if is_pulse_running():
         # Already running — show red warning, don't launch again
         show_popup("already_running")
