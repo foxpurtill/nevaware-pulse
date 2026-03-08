@@ -153,6 +153,7 @@ class EmailWatcher:
         self._services: dict = {}
         self._last_messages: list[dict] = []
         self._lock = threading.Lock()
+        self._suspended = False  # True when Fox is present (heartbeat paused)
 
     def start(self):
         if self._thread and self._thread.is_alive():
@@ -164,6 +165,19 @@ class EmailWatcher:
 
     def stop(self):
         self._stop_event.set()
+
+    def suspend(self):
+        """Suspend polling while Fox is present (heartbeat paused / Green mode).
+        Toast notifications stop; get_inbox_summary still works if called manually."""
+        with self._lock:
+            self._suspended = True
+        logger.info("email_watcher: polling suspended (Fox present).")
+
+    def resume(self):
+        """Resume polling when Fox goes away (heartbeat active / Red mode)."""
+        with self._lock:
+            self._suspended = False
+        logger.info("email_watcher: polling resumed (Fox away).")
 
     def get_inbox_summary(self) -> str:
         """
@@ -191,6 +205,10 @@ class EmailWatcher:
                 self._history_ids[addr] = hid
 
         while not self._stop_event.wait(poll_interval):
+            # Skip polling cycle if suspended (Fox is present / heartbeat paused)
+            with self._lock:
+                if self._suspended:
+                    continue
             new_all = []
             for acc in accounts:
                 addr = acc.get("address", "")

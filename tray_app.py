@@ -392,7 +392,21 @@ class PulseApp:
             else:
                 self.heartbeat_controller.pause()
 
-        status = "Red (Fox away — heartbeat active)" if self.active else "Green (Fox present — heartbeat paused)"
+        # Notify email watcher: suspend polling when Fox is present (heartbeat paused)
+        # Email polling is unnecessary during active conversation
+        for m in self.modules:
+            if m.name == "email_watcher" and m.impl:
+                try:
+                    if self.active:
+                        if hasattr(m.impl, "resume"):
+                            m.impl.resume()
+                    else:
+                        if hasattr(m.impl, "suspend"):
+                            m.impl.suspend()
+                except Exception as e:
+                    logger.warning(f"email_watcher toggle notify failed: {e}")
+
+        status = "Red (Fox away — heartbeat active)" if self.active else "Green (Fox present — heartbeat paused, modules running)"
         logger.info(f"State toggled: {status}")
 
     # ---- Module loading ----
@@ -538,7 +552,16 @@ class PulseApp:
         # Left-click toggle
         self.tray_icon.on_activate = lambda icon: self._toggle()
 
-        # F10 — global on/off kill switch (stops the whole app)
+        # F1 — pause/resume heartbeat (app stays running, modules stay active)
+        # Email watcher also suspends when heartbeat is paused (Fox is present)
+        try:
+            import keyboard as kb
+            kb.add_hotkey("f1", self._toggle)
+            logger.info("F1 registered — press to pause/resume heartbeat from anywhere.")
+        except Exception as e:
+            logger.warning(f"Could not register F1 hotkey: {e}")
+
+        # F10 — full app kill
         try:
             import keyboard as kb
             kb.add_hotkey("f10", self._shutdown)
