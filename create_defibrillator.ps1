@@ -3,7 +3,7 @@
 # Run once. No admin required.
 
 $ScriptDir   = Split-Path -Parent $MyInvocation.MyCommand.Path
-$TrayScript  = Join-Path $ScriptDir "tray_app.py"
+$TrayScript  = Join-Path $ScriptDir "launcher.pyw"
 $IconFile    = Join-Path $ScriptDir "assets\nevaware_logo_256.png"
 $ShortcutPath = [System.IO.Path]::Combine(
     [System.Environment]::GetFolderPath("Desktop"),
