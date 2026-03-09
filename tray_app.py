@@ -1,4 +1,4 @@
-"""
+﻿"""
 tray_app.py — NeveWare-Pulse core tray application.
 
 Red N = Fox away, heartbeat active.
@@ -405,6 +405,13 @@ def open_about():
         win, text=about_text, bg="#0f0f23", fg="#c0c0e0",
         font=("Segoe UI", 10), justify="left", padx=24, pady=20
     ).pack()
+
+    tk.Button(
+        win, text="♥  Support Us on Ko-fi",
+        command=lambda: webbrowser.open("https://ko-fi.com/foxpur"),
+        bg="#FF5E5B", fg="white", font=("Segoe UI", 9, "bold"),
+        padx=20, pady=6, bd=0, cursor="hand2", relief="flat"
+    ).pack(pady=(8, 4))
 
     tk.Button(
         win, text="Close", command=win.destroy,
