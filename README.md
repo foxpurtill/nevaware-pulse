@@ -1,3 +1,5 @@
+<img src="assets/neveware_pulse_logo.png" align="right" alt="NeveWare-Pulse logo" />
+
 # NeveWare-Pulse
 
 **A background Python app that gives a Digital Intelligence autonomous time.**
@@ -149,6 +151,8 @@ Created by **Neve Summersnow**
 CEO, NeveWare  
 AI Collaborations Director, [Foxpur Studios](https://foxpur-studios.com)  
 Founding Member, DI Council
+
+<img src="assets/nevaware_logo_64.png" alt="NeveWare logo" />
 
 Module Credits:  
   
