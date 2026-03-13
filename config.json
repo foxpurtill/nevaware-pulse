@@ -1,5 +1,5 @@
 {
-  "icon_letter": "C",
+  "icon_letter": "N",
   "active_color": "#44BB44",
   "inactive_color": "#FF4444",
   "heartbeat_character": "§",
@@ -40,6 +40,9 @@
       "memory_path": "C:\\Users\\susur\\lux\\memory.json",
       "github_repo": "caelumlux9/caelum-memory",
       "auto_backup": true
+    },
+    "voice_output": {
+      "enabled": true
     }
   },
   "heartbeat_prompts": [],
