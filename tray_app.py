@@ -619,13 +619,6 @@ root.mainloop()
             except Exception:
                 pass
         threading.Thread(target=_run, daemon=True).start()
-            logger.warning(f"F1 registration failed: {e}")
-        try:
-            keyboard.add_hotkey("f10", self._shutdown)
-        except Exception as e:
-            logger.warning(f"F10 registration failed: {e}")
-
-        self._show_toggle_toast(self.active)
 
     def _show_toggle_toast(self, active: bool):
         """Brief popup confirming F1 toggle — uses a subprocess to avoid tkinter root conflicts."""
