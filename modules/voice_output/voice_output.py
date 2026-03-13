@@ -198,10 +198,13 @@ def speak(
         label = voice_name or voice_id[:8]
         _log(f"Speaking [{label}]: '{text[:60]}{'...' if len(text) > 60 else ''}'")
 
+        # CREATE_NO_WINDOW (0x08000000) — hide the ffplay console on Windows
+        kwargs = {"creationflags": 0x08000000} if os.name == "nt" else {}
+
         if block:
-            subprocess.run(cmd, check=True, timeout=120)
+            subprocess.run(cmd, check=True, timeout=120, **kwargs)
         else:
-            subprocess.Popen(cmd)
+            subprocess.Popen(cmd, **kwargs)
 
         return True
 
