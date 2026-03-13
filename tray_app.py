@@ -51,18 +51,37 @@ logger = logging.getLogger("tray_app")
 # Config
 # ---------------------------------------------------------------------------
 DEFAULT_CONFIG = {
-    "icon_letter": "N",
-    "active_color": "#FF4444",
-    "inactive_color": "#44BB44",
+    # ── Identity ────────────────────────────────────────────────────────────
+    "icon_letter": "N",          # Single letter shown in the tray icon
+    "ai_name": "Neve",           # Display name of the DI — used in heartbeat prompts
+    "active_color": "#FF4444",   # Tray icon colour when heartbeat is running (Red)
+    "inactive_color": "#44BB44", # Tray icon colour when paused (Green)
+
+    # ── Heartbeat ───────────────────────────────────────────────────────────
     "heartbeat_character": "\u00a7",
     "default_interval_minutes": 30,
+    "heartbeat_prompts": [],     # Empty = use built-in defaults. Populate to override.
+
+    # ── Paths ───────────────────────────────────────────────────────────────
+    "neve_dir": "",              # Data dir. Empty = auto (~\Documents\Neve)
+    "memory_path": "",           # memory.json path. Empty = neve_dir\memory.json
+    "claude_app_path": "",       # Claude exe path. Empty = auto-detect
+
+    # ── Email ───────────────────────────────────────────────────────────────
+    "email_address": "",         # Primary email address for this DI
+    "gmail_token_path": "",      # Path to Gmail OAuth token.json. Empty = neve_dir\token.json
+
+    # ── Voice (F2) ──────────────────────────────────────────────────────────
+    "listen_duration_seconds": 8,    # F2 recording duration in seconds
+    "ffplay_path": "",               # Path to ffplay.exe. Empty = auto-detect on PATH
+    "elevenlabs_voice_id": "",       # ElevenLabs voice ID for TTS output
+    "elevenlabs_api_key": "",        # ElevenLabs API key
+
+    # ── Misc ────────────────────────────────────────────────────────────────
     "emoji_hotkey": "ctrl+alt+e",
     "recent_emoji": [],
-    "modules": {},
-    "heartbeat_prompts": [],  # Empty = use built-in defaults. Populate to override.
     "defib_restore_last_state": True,
-    "listen_duration_seconds": 8,  # F2 recording duration in seconds
-    "neve_dir": ""  # Path to Neve data dir. Empty = auto-detect (~\Documents\Neve)
+    "modules": {}
 }
 
 
