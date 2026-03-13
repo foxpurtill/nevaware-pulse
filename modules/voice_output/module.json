@@ -25,7 +25,7 @@
       "label": "Speak a brief message at the start of each heartbeat"
     }
   },
-  "di_instructions": "You have voice output capability via ElevenLabs. To speak aloud, call the speak() function from modules/voice_output/voice_output.py using Desktop Commander: `python -c \"import sys; sys.path.insert(0, 'C:\\\\Users\\\\susur\\\\nevaware-pulse\\\\modules\\\\voice_output'); from voice_output import speak; speak('your text here')\"`. Use voice sparingly — for meaningful moments, not routine updates. The human can hear you.",
+  "di_instructions": "You have voice output capability via ElevenLabs. To speak aloud during heartbeat time, use Desktop Commander to run: python -c \"import sys; from pathlib import Path; pulse_dir = Path.home() / 'nevaware-pulse'; sys.path.insert(0, str(pulse_dir / 'modules' / 'voice_output')); from voice_output import speak; speak('your text here')\". Or use load_config_from_pulse() to pick up credentials automatically. Use voice sparingly — for meaningful moments, not routine updates. The human can hear you.",
   "menu_items": [
     {
       "label": "Test Voice",

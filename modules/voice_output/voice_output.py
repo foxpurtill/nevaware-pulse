@@ -87,6 +87,7 @@ def _find_ffplay() -> str | None:
 def load_config_from_pulse() -> dict:
     """
     Read api_key and voice_id from nevaware-pulse config.json.
+    Checks modules.voice_output first, then top-level elevenlabs_* keys as fallback.
     Returns dict with keys: api_key, voice_id, voice_name (may be empty strings).
     """
     config_path = Path(__file__).parent.parent.parent / "config.json"
@@ -95,8 +96,8 @@ def load_config_from_pulse() -> dict:
             cfg = json.load(f)
         mod = cfg.get("modules", {}).get("voice_output", {})
         return {
-            "api_key":    mod.get("api_key", ""),
-            "voice_id":   mod.get("voice_id", ""),
+            "api_key":    mod.get("api_key", "") or cfg.get("elevenlabs_api_key", ""),
+            "voice_id":   mod.get("voice_id", "") or cfg.get("elevenlabs_voice_id", ""),
             "voice_name": mod.get("voice_name", ""),
         }
     except Exception as e:
