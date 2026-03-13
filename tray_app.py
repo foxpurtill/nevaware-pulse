@@ -60,7 +60,8 @@ DEFAULT_CONFIG = {
     "recent_emoji": [],
     "modules": {},
     "heartbeat_prompts": [],  # Empty = use built-in defaults. Populate to override.
-    "defib_restore_last_state": True  # True = restore saved state after Defibrillator recovery. False = always start paused (Green).
+    "defib_restore_last_state": True,
+    "listen_duration_seconds": 8  # F2 recording duration in seconds
 }
 
 
@@ -509,8 +510,8 @@ class PulseApp:
         self._register_hotkeys()
 
     def _register_hotkeys(self):
-        """Register (or re-register) F1 and F10. Safe to call multiple times."""
-        for key in ("f1", "f10"):
+        """Register (or re-register) F1, F2, and F10. Safe to call multiple times."""
+        for key in ("f1", "f2", "f10"):
             try:
                 keyboard.remove_hotkey(key)
             except Exception:
@@ -518,6 +519,106 @@ class PulseApp:
         try:
             keyboard.add_hotkey("f1", self._toggle)
         except Exception as e:
+            logger.warning(f"F1 registration failed: {e}")
+        try:
+            keyboard.add_hotkey("f2", self._listen)
+        except Exception as e:
+            logger.warning(f"F2 registration failed: {e}")
+        try:
+            keyboard.add_hotkey("f10", self._shutdown)
+        except Exception as e:
+            logger.warning(f"F10 registration failed: {e}")
+
+    def _listen(self):
+        """F2 — record 8 seconds of audio, transcribe with Whisper, log to voice_log.db."""
+        import threading
+        threading.Thread(target=self._listen_worker, daemon=True).start()
+
+    def _listen_worker(self):
+        try:
+            import sys as _sys
+            _neve_dir = r"C:\Users\foxap\Documents\Neve"
+            if _neve_dir not in _sys.path:
+                _sys.path.insert(0, _neve_dir)
+            import listen as _listen
+            import sounddevice as sd
+            import soundfile as sf
+            import os
+
+            duration = self.config.get("listen_duration_seconds", 8)
+
+            # Toast: recording started
+            self._show_listen_toast("recording", duration)
+
+            audio = sd.rec(
+                int(duration * 16000),
+                samplerate=16000,
+                channels=1,
+                dtype="float32"
+            )
+            sd.wait()
+            sf.write(_listen.TEMP_WAV, audio, 16000)
+
+            # Toast: transcribing
+            self._show_listen_toast("transcribing", duration)
+
+            transcript, language = _listen.transcribe(_listen.TEMP_WAV)
+
+            con = _listen.init_db()
+            _listen.log_transcript(con, duration, transcript, language)
+            con.close()
+
+            try:
+                os.remove(_listen.TEMP_WAV)
+            except Exception:
+                pass
+
+            logger.info(f"F2 voice captured ({language}): {transcript}")
+            self._show_listen_toast("done", duration, transcript)
+
+        except Exception as e:
+            logger.warning(f"F2 listen failed: {e}")
+            self._show_listen_toast("error", 0, str(e))
+
+    def _show_listen_toast(self, state: str, duration: float, text: str = ""):
+        """Toast for F2 voice recording states."""
+        import threading
+        import subprocess
+        import sys
+
+        messages = {
+            "recording": (f"🎙️  Recording {int(duration)}s...", "#0a1a2a", "#66aaff"),
+            "transcribing": ("⏳  Transcribing...", "#1a0a2a", "#aa66ff"),
+            "done": (f"✅  {text[:60]}{'…' if len(text) > 60 else ''}", "#0a2a0a", "#66ff99"),
+            "error": (f"❌  {text[:60]}", "#2a0a0a", "#ff6666"),
+        }
+        msg, bg, fg = messages.get(state, ("...", "#1a1a2e", "#ffffff"))
+        delay = 6000 if state in ("done", "error") else 60000
+
+        script = f"""
+import tkinter as tk
+root = tk.Tk()
+root.overrideredirect(True)
+root.attributes("-topmost", True)
+root.attributes("-alpha", 0.88)
+tk.Label(root, text="  {msg}  ", font=("Segoe UI", 11, "bold"),
+         bg="{bg}", fg="{fg}", padx=12, pady=8).pack()
+root.update_idletasks()
+sw = root.winfo_screenwidth()
+sh = root.winfo_screenheight()
+root.geometry(f"+{{sw - root.winfo_width() - 24}}+{{sh - root.winfo_height() - 110}}")
+root.after({delay}, root.destroy)
+root.mainloop()
+"""
+        def _run():
+            try:
+                subprocess.Popen(
+                    [sys.executable, "-c", script],
+                    creationflags=0x08000000
+                )
+            except Exception:
+                pass
+        threading.Thread(target=_run, daemon=True).start()
             logger.warning(f"F1 registration failed: {e}")
         try:
             keyboard.add_hotkey("f10", self._shutdown)
