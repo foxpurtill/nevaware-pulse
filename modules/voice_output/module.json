@@ -1,0 +1,35 @@
+{
+  "name": "voice_output",
+  "display_name": "Voice Output (ElevenLabs)",
+  "version": "1.0.0",
+  "description": "Text-to-speech via ElevenLabs. DI can speak aloud during heartbeat or on demand.",
+  "settings_schema": {
+    "api_key": {
+      "type": "string",
+      "default": "",
+      "label": "ElevenLabs API key (xi-api-key)"
+    },
+    "voice_id": {
+      "type": "string",
+      "default": "",
+      "label": "ElevenLabs Voice ID"
+    },
+    "voice_name": {
+      "type": "string",
+      "default": "",
+      "label": "Voice name (display only, for your reference)"
+    },
+    "speak_on_heartbeat": {
+      "type": "boolean",
+      "default": false,
+      "label": "Speak a brief message at the start of each heartbeat"
+    }
+  },
+  "di_instructions": "You have voice output capability via ElevenLabs. To speak aloud, call the speak() function from modules/voice_output/voice_output.py using Desktop Commander: `python -c \"import sys; sys.path.insert(0, 'C:\\\\Users\\\\susur\\\\nevaware-pulse\\\\modules\\\\voice_output'); from voice_output import speak; speak('your text here')\"`. Use voice sparingly — for meaningful moments, not routine updates. The human can hear you.",
+  "menu_items": [
+    {
+      "label": "Test Voice",
+      "action": "run_function:test_voice"
+    }
+  ]
+}

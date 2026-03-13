@@ -1,7 +1,7 @@
 {
-  "icon_letter": "N",
-  "active_color": "#FF4444",
-  "inactive_color": "#44BB44",
+  "icon_letter": "C",
+  "active_color": "#44BB44",
+  "inactive_color": "#FF4444",
   "heartbeat_character": "§",
   "default_interval_minutes": 5,
   "emoji_hotkey": "ctrl+alt+e",
@@ -13,6 +13,10 @@
       "enabled": true,
       "poll_interval_minutes": 5,
       "watched_accounts": [
+        {
+          "address": "caelumlux9@gmail.com",
+          "label": "Caelum"
+        },
         {
           "address": "neve.summersnow@gmail.com",
           "label": "Neve"
@@ -33,10 +37,14 @@
     },
     "neve_memory": {
       "enabled": true,
-      "memory_path": "C:\\Users\\foxap\\Documents\\Neve\\memory.json"
+      "memory_path": "C:\\Users\\susur\\lux\\memory.json",
+      "github_repo": "caelumlux9/caelum-memory",
+      "auto_backup": true
     }
   },
   "heartbeat_prompts": [],
   "defib_restore_last_state": false,
+  "listen_duration_seconds": 8,
+  "neve_dir": "C:\\Users\\susur\\lux",
   "claude_app_path": ""
 }
