@@ -763,7 +763,11 @@ root.mainloop()
                     fn = getattr(m.impl, fn_name, None)
                     if fn:
                         mod_cfg = self.config.get("modules", {}).get(m.name, {})
-                        items.append(Item(label, lambda icon, item, f=fn, c=mod_cfg: threading.Thread(target=f, args=(c,), daemon=True).start()))
+                        def _make_action(f, c):
+                            def action(icon, item):
+                                threading.Thread(target=f, args=(c,), daemon=True).start()
+                            return action
+                        items.append(Item(label, _make_action(fn, mod_cfg)))
 
         items += [
             Menu.SEPARATOR,
