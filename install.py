@@ -51,10 +51,7 @@ DEFAULT_CONFIG = {
         "email_watcher": {
             "enabled": False,
             "poll_interval_minutes": 5,
-            "watched_accounts": [
-                {"address": "neve.summersnow@gmail.com", "label": "Neve"},
-                {"address": "foxapurtill@gmail.com", "label": "Fox"}
-            ],
+            "watched_accounts": [],
             "notify_on_new_mail": True,
             "heartbeat_inbox_check": True
         },
@@ -62,7 +59,7 @@ DEFAULT_CONFIG = {
         "mic_listener": {"enabled": False},
         "neve_memory": {
             "enabled": False,
-            "memory_path": str(USER_HOME / "Documents" / "Neve" / "memory.json")
+            "memory_path": ""
         }
     }
 }
@@ -174,11 +171,10 @@ def offer_startup_task():
         if not TASK_SCRIPT.exists():
             fail(f"register_task.ps1 not found at {TASK_SCRIPT}")
             return
-        # Use -Command with & call operator to avoid path quoting issues
-        ps_command = f'& "{TASK_SCRIPT}"'
+        # Pass script path as a separate argument to avoid quoting issues
         result = subprocess.run(
-            ["powershell", "-ExecutionPolicy", "Bypass", "-Command", ps_command],
-            capture_output=True, text=True
+            ["powershell", "-ExecutionPolicy", "Bypass", "-File", str(TASK_SCRIPT)],
+            capture_output=True, text=True, timeout=30
         )
         if result.returncode == 0:
             ok("Startup task registered. NeveWare-Pulse will launch at login.")

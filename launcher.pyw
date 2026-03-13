@@ -369,12 +369,14 @@ def _open_troubleshoot():
     steps = (
         "1.  Check Python is on PATH:\n"
         "       python --version  (in PowerShell)\n\n"
-        "2.  Check pywin32 is working:\n"
+        "2.  Run the installer:\n"
+        "       python install.py\n\n"
+        "3.  Check pywin32 is working:\n"
         "       python -c \"import win32gui; print('OK')\"\n\n"
-        "3.  Try launching manually:\n"
-        "       pythonw C:\\Code\\nevaware-pulse\\tray_app.py\n\n"
-        "4.  Check the log for errors:\n"
-        "       C:\\Users\\foxap\\Documents\\Neve\\heartbeat_log.txt"
+        "4.  Try launching manually:\n"
+        "       python tray_app.py\n\n"
+        "5.  Check the log for errors:\n"
+        f"       {Path.home() / 'Documents' / 'Neve' / 'heartbeat_log.txt'}"
     )
 
     tk.Label(
@@ -402,6 +404,38 @@ def _open_troubleshoot():
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
+    # Guard: check that dependencies are present before doing anything
+    try:
+        import pystray
+        import win32gui
+    except ImportError as _e:
+        # Show a plain tkinter popup — pystray/win32 aren't available yet
+        _root = tk.Tk()
+        _root.withdraw()
+        _win = tk.Toplevel(_root)
+        _win.title("NeveWare-Pulse — Setup Required")
+        _win.configure(bg="#1a1a2e")
+        _win.resizable(False, False)
+        _win.attributes("-topmost", True)
+        w, h = 400, 200
+        sw = _win.winfo_screenwidth(); sh = _win.winfo_screenheight()
+        _win.geometry(f"{w}x{h}+{(sw-w)//2}+{(sh-h)//2}")
+        tk.Label(_win, text="Setup Required", fg="#FFAA00", bg="#1a1a2e",
+                 font=("Segoe UI", 14, "bold")).pack(pady=(20, 4))
+        tk.Label(_win,
+                 text="Dependencies are not installed yet.\n\n"
+                      "Open a terminal in this folder and run:\n"
+                      "    python install.py\n\n"
+                      "Then try launching again.",
+                 fg="#cccccc", bg="#1a1a2e",
+                 font=("Segoe UI", 10), justify="center").pack(padx=20)
+        tk.Button(_win, text="OK", command=lambda: (_win.destroy(), _root.destroy()),
+                  bg="#3366AA", fg="white", relief="flat",
+                  font=("Segoe UI", 9, "bold"), padx=16, pady=5).pack(pady=12)
+        _win.protocol("WM_DELETE_WINDOW", lambda: (_win.destroy(), _root.destroy()))
+        _root.mainloop()
+        sys.exit(1)
+
     # Allow tray_app to call us with --killed to show the shutdown popup
     if "--killed" in sys.argv:
         show_popup("killed")
