@@ -155,6 +155,10 @@ def speak(
         _log("ERROR: ffplay not available. Cannot play audio.")
         return False
 
+    # Prepend a short pause so ffplay startup latency doesn't clip the first syllable.
+    # A leading ellipsis causes ElevenLabs to render a natural breath before speaking.
+    padded_text = "... " + text if not text.startswith("...") else text
+
     # ElevenLabs TTS request
     url = f"https://api.elevenlabs.io/v1/text-to-speech/{voice_id}"
     headers = {
@@ -163,7 +167,7 @@ def speak(
         "Accept":       "audio/mpeg",
     }
     payload = json.dumps({
-        "text": text,
+        "text": padded_text,
         "model_id": model_id,
         "voice_settings": {
             "stability": stability,

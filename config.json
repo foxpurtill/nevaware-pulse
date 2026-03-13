@@ -42,9 +42,14 @@
       "auto_backup": true
     },
     "voice_output": {
-      "enabled": true
+      "enabled": true,
+      "api_key": "752ff869242c6e153c2c2ea81bc40be3abc4cf0a4be1fc8683b7b5790c28ef52",
+      "voice_id": "21m00Tcm4TlvDq8ikWAM",
+      "voice_name": "Rachel"
     }
   },
+  "elevenlabs_api_key": "752ff869242c6e153c2c2ea81bc40be3abc4cf0a4be1fc8683b7b5790c28ef52",
+  "elevenlabs_voice_id": "21m00Tcm4TlvDq8ikWAM",
   "heartbeat_prompts": [],
   "defib_restore_last_state": false,
   "listen_duration_seconds": 8,
