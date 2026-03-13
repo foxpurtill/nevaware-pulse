@@ -255,6 +255,20 @@ class HeartbeatController:
                     _log(f"whisper_listener: injected spoken context into § prompt")
             except Exception as e:
                 _log(f"whisper_listener: skipped ({e})")
+        else:
+            # Fallback: check voice_log.db directly from listen.py (no module needed)
+            try:
+                import sys as _sys
+                _neve_dir = r"C:\Users\foxap\Documents\Neve"
+                if _neve_dir not in _sys.path:
+                    _sys.path.insert(0, _neve_dir)
+                import listen as _listen
+                spoken = _listen.format_for_prompt(minutes=60)
+                if spoken:
+                    prompt += f"\n\n{spoken}"
+                    _log("voice_log: injected recent voice context into § prompt")
+            except Exception as e:
+                _log(f"voice_log: skipped ({e})")
 
         return prompt
 
