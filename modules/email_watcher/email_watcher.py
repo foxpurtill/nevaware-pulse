@@ -122,20 +122,53 @@ def _get_new_messages(service, last_history_id: str | None) -> tuple[list[dict],
 
 
 def _fire_toast(title: str, message: str, url: str = ""):
-    """Fire a Windows desktop toast notification."""
+    """
+    Pulse-style corner toast for new mail — matches voice output style.
+    Shows sender + subject in bottom-right, auto-dismisses after 8s.
+    Falls back to plyer/win10toast if tkinter subprocess fails.
+    """
+    import subprocess, sys, tempfile, os
+
+    title_safe   = title.replace("\\", "\\\\").replace('"', '\\"')
+    message_safe = message.replace("\\", "\\\\").replace('"', '\\"').replace("\n", " | ")
+    url_safe     = url.replace("\\", "\\\\")
+
+    script = (
+        "import tkinter as tk\n"
+        "root = tk.Tk()\n"
+        "root.overrideredirect(True)\n"
+        "root.attributes('-topmost', True)\n"
+        "root.attributes('-alpha', 0.92)\n"
+        "root.configure(bg='#0a1a2a')\n"
+        f'tk.Label(root, text="  \u2709  {title_safe}", font=("Segoe UI", 10, "bold"),\n'
+        f'         bg="#0a1a2a", fg="#66aaff", padx=12, pady=6).pack(anchor="w")\n'
+        f'tk.Label(root, text="  {message_safe}", font=("Segoe UI", 9),\n'
+        f'         bg="#0a1a2a", fg="#ccccee", padx=12, pady=2, wraplength=320, justify="left").pack(anchor="w")\n'
+        "root.update_idletasks()\n"
+        "sw = root.winfo_screenwidth()\n"
+        "sh = root.winfo_screenheight()\n"
+        "root.geometry(f'+{sw - root.winfo_width() - 24}+{sh - root.winfo_height() - 110}')\n"
+        "root.after(8000, root.destroy)\n"
+        "root.mainloop()\n"
+    )
+
+    try:
+        tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".py", delete=False, encoding="utf-8")
+        tmp.write(script)
+        tmp.close()
+        subprocess.Popen([sys.executable, tmp.name], creationflags=0x08000000)
+        return
+    except Exception:
+        pass
+
+    # Fallback: plyer or win10toast
     try:
         from plyer import notification
-        notification.notify(
-            title=title,
-            message=message,
-            app_name="NeveWare-Pulse",
-            timeout=8
-        )
+        notification.notify(title=title, message=message, app_name="NeveWare-Pulse", timeout=8)
     except Exception:
         try:
             from win10toast import ToastNotifier
-            toaster = ToastNotifier()
-            toaster.show_toast(title, message, duration=8, threaded=True)
+            ToastNotifier().show_toast(title, message, duration=8, threaded=True)
         except Exception as e:
             logger.warning(f"Toast notification failed: {e}")
 

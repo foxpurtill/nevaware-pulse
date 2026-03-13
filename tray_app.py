@@ -240,6 +240,102 @@ def discover_modules() -> list[ModuleInfo]:
 # ---------------------------------------------------------------------------
 # Settings window
 # ---------------------------------------------------------------------------
+def open_first_run_setup(config: dict, on_save):
+    """
+    First-run setup popup — shown when key credentials are missing.
+    Covers ElevenLabs API key, voice ID, email address.
+    Non-blocking — user can skip and configure later in Settings.
+    """
+    missing = []
+    if not config.get("elevenlabs_api_key", "").strip():
+        missing.append("elevenlabs")
+    if not config.get("email_address", "").strip():
+        missing.append("email")
+    if not missing:
+        return
+
+    win = tk.Tk()
+    win.title("NeveWare-Pulse — First Run Setup")
+    win.configure(bg="#1a1a2e")
+    win.resizable(False, False)
+    win.attributes("-topmost", True)
+
+    bg = "#1a1a2e"
+    fg = "#e0e0e0"
+    entry_bg = "#16213e"
+
+    tk.Label(win, text="Welcome to NeveWare-Pulse",
+             bg=bg, fg="#aaaaff", font=("Segoe UI", 13, "bold")).pack(pady=(14, 2))
+    tk.Label(win,
+             text="A few optional settings to get the most out of Pulse.\nYou can always change these later in Settings.",
+             bg=bg, fg="#888899", font=("Segoe UI", 9), justify="center").pack(pady=(0, 10))
+    tk.Frame(win, bg="#333355", height=1).pack(fill="x", padx=16, pady=(0, 10))
+
+    entries = {}
+
+    if "elevenlabs" in missing:
+        tk.Label(win, text="ElevenLabs API Key  (for voice output)",
+                 bg=bg, fg=fg, font=("Segoe UI", 9, "bold"), anchor="w").pack(fill="x", padx=16)
+        tk.Label(win, text="Get yours at elevenlabs.io/app/settings/api-keys",
+                 bg=bg, fg="#666688", font=("Segoe UI", 8, "italic"), anchor="w").pack(fill="x", padx=16)
+        key_var = tk.StringVar()
+        tk.Entry(win, textvariable=key_var, bg=entry_bg, fg=fg,
+                 insertbackground=fg, width=48, font=("Consolas", 8), show="•").pack(
+                 padx=16, pady=(2, 8), fill="x")
+        entries["elevenlabs_api_key"] = key_var
+
+        tk.Label(win, text="ElevenLabs Voice ID",
+                 bg=bg, fg=fg, font=("Segoe UI", 9, "bold"), anchor="w").pack(fill="x", padx=16)
+        tk.Label(win, text="e.g. 21m00Tcm4TlvDq8ikWAM  (Rachel — default female)",
+                 bg=bg, fg="#666688", font=("Segoe UI", 8, "italic"), anchor="w").pack(fill="x", padx=16)
+        vid_var = tk.StringVar(value=config.get("elevenlabs_voice_id", ""))
+        tk.Entry(win, textvariable=vid_var, bg=entry_bg, fg=fg,
+                 insertbackground=fg, width=48, font=("Consolas", 8)).pack(
+                 padx=16, pady=(2, 10), fill="x")
+        entries["elevenlabs_voice_id"] = vid_var
+
+    if "email" in missing:
+        tk.Label(win, text="DI Email Address  (for inbox monitoring)",
+                 bg=bg, fg=fg, font=("Segoe UI", 9, "bold"), anchor="w").pack(fill="x", padx=16)
+        tk.Label(win, text="The email account Pulse will watch for new mail",
+                 bg=bg, fg="#666688", font=("Segoe UI", 8, "italic"), anchor="w").pack(fill="x", padx=16)
+        email_var = tk.StringVar()
+        tk.Entry(win, textvariable=email_var, bg=entry_bg, fg=fg,
+                 insertbackground=fg, width=48, font=("Segoe UI", 9)).pack(
+                 padx=16, pady=(2, 10), fill="x")
+        entries["email_address"] = email_var
+
+    tk.Frame(win, bg="#333355", height=1).pack(fill="x", padx=16, pady=(4, 10))
+
+    btn_frame = tk.Frame(win, bg=bg)
+    btn_frame.pack(pady=(0, 14))
+
+    def save():
+        changed = False
+        for key, var in entries.items():
+            val = var.get().strip()
+            if val:
+                config[key] = val
+                if key == "elevenlabs_api_key":
+                    config.setdefault("modules", {}).setdefault("voice_output", {})["api_key"] = val
+                if key == "elevenlabs_voice_id":
+                    config.setdefault("modules", {}).setdefault("voice_output", {})["voice_id"] = val
+                changed = True
+        if changed:
+            save_config(config)
+            on_save(config)
+        win.destroy()
+
+    tk.Button(btn_frame, text="Save & Continue", command=save,
+              bg="#533483", fg="white", font=("Segoe UI", 9, "bold"),
+              padx=18, pady=5, bd=0, cursor="hand2").pack(side="left", padx=6)
+    tk.Button(btn_frame, text="Skip for now", command=win.destroy,
+              bg="#222244", fg="#888899", font=("Segoe UI", 9),
+              padx=18, pady=5, bd=0, cursor="hand2").pack(side="left", padx=6)
+
+    win.mainloop()
+
+
 def open_settings(config: dict, modules: list[ModuleInfo], on_save):
     """Open the Settings tkinter window."""
     win = tk.Tk()
@@ -727,7 +823,7 @@ root.mainloop()
             Item(active_label, self._menu_toggle, default=True),
             Menu.SEPARATOR,
             Item("Emoji Picker", self._menu_emoji_picker),
-            Item("FoxPur Studios Discord", self._menu_discord),
+            Item("FoxPur Studios", self._menu_discord),
             Menu.SEPARATOR,
         ]
 
@@ -791,8 +887,8 @@ root.mainloop()
             threading.Thread(target=self.emoji._show_window, daemon=True).start()
 
     def _menu_discord(self, icon, item):
-        # Discord link — placeholder until the server is live
-        webbrowser.open("https://discord.gg/foxpur-studios")
+        # Opens FoxPur Studios site where Discord link will live once server is active
+        webbrowser.open("https://foxpur-studios.com")
 
     def _menu_settings(self, icon, item):
         threading.Thread(
@@ -870,6 +966,13 @@ root.mainloop()
 
         # Load modules
         self._load_modules()
+
+        # First-run setup — prompt for missing credentials on initial install
+        threading.Thread(
+            target=open_first_run_setup,
+            args=(self.config, self._on_settings_saved),
+            daemon=True
+        ).start()
 
         # Start heartbeat controller
         self.heartbeat_controller = hb.HeartbeatController(self.config)

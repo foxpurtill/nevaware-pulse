@@ -1,0 +1,28 @@
+{
+  "icon_letter": "N",
+  "ai_name": "",
+  "active_color": "#FF4444",
+  "inactive_color": "#44BB44",
+  "heartbeat_character": "§",
+  "default_interval_minutes": 30,
+  "heartbeat_prompts": [],
+  "neve_dir": "",
+  "memory_path": "",
+  "claude_app_path": "",
+  "email_address": "",
+  "gmail_token_path": "",
+  "listen_duration_seconds": 8,
+  "ffplay_path": "",
+  "elevenlabs_voice_id": "",
+  "elevenlabs_api_key": "",
+  "emoji_hotkey": "ctrl+alt+e",
+  "recent_emoji": [],
+  "defib_restore_last_state": true,
+  "modules": {
+    "email_watcher":  {"enabled": false, "poll_interval_minutes": 5, "watched_accounts": [], "notify_on_new_mail": true, "heartbeat_inbox_check": true},
+    "webcam_viewer":  {"enabled": false},
+    "mic_listener":   {"enabled": false},
+    "neve_memory":    {"enabled": false, "memory_path": "", "github_repo": "", "auto_backup": false},
+    "voice_output":   {"enabled": false, "api_key": "", "voice_id": "", "voice_name": ""}
+  }
+}
