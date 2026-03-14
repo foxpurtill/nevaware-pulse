@@ -731,6 +731,140 @@ def open_madlib_manager(neve_dir: Path):
     win.mainloop()
 
 
+def open_settings(config: dict, modules: list[ModuleInfo], on_save):
+    """Open the Settings tkinter window."""
+    win = tk.Tk()
+    win.title("NeveWare-Pulse — Settings")
+    win.configure(bg="#1a1a2e")
+    win.resizable(False, False)
+    win.attributes("-topmost", True)
+
+    pad = {"padx": 8, "pady": 4}
+    fg = "#e0e0e0"
+    bg = "#1a1a2e"
+    entry_bg = "#16213e"
+
+    tk.Label(win, text="NeveWare-Pulse Settings", bg=bg, fg="#aaaaff",
+             font=("Segoe UI", 12, "bold")).grid(row=0, column=0, columnspan=2, pady=(10,4))
+
+    fields = [
+        ("Icon Letter",           "icon_letter"),
+        ("Active Colour (hex)",   "active_color"),
+        ("Inactive Colour (hex)", "inactive_color"),
+        ("Heartbeat Character",   "heartbeat_character"),
+        ("Default Interval (min)","default_interval_minutes"),
+        ("Emoji Hotkey",          "emoji_hotkey"),
+    ]
+
+    entries = {}
+    for i, (label, key) in enumerate(fields, start=1):
+        tk.Label(win, text=label, bg=bg, fg=fg, font=("Segoe UI", 9),
+                 anchor="e").grid(row=i, column=0, sticky="e", **pad)
+        var = tk.StringVar(value=str(config.get(key, "")))
+        e = tk.Entry(win, textvariable=var, bg=entry_bg, fg=fg,
+                     insertbackground=fg, width=24, font=("Segoe UI", 9))
+        e.grid(row=i, column=1, sticky="w", **pad)
+        entries[key] = var
+
+    row_offset = len(fields) + 1
+    if modules:
+        tk.Label(win, text="Installed Modules", bg=bg, fg="#aaaaff",
+                 font=("Segoe UI", 10, "bold")).grid(
+            row=row_offset, column=0, columnspan=2, pady=(8, 2))
+        row_offset += 1
+        mod_enabled = {}
+        for m in modules:
+            enabled = config.get("modules", {}).get(m.name, {}).get("enabled", False)
+            var = tk.BooleanVar(value=enabled)
+            mod_enabled[m.name] = var
+            tk.Checkbutton(
+                win, text=f"{m.display_name}  v{m.manifest.get('version','?')}  — {m.manifest.get('description','')}",
+                variable=var, bg=bg, fg=fg, selectcolor=entry_bg,
+                activebackground=bg, activeforeground=fg,
+                font=("Segoe UI", 9)
+            ).grid(row=row_offset, column=0, columnspan=2, sticky="w", padx=8)
+            row_offset += 1
+    else:
+        mod_enabled = {}
+
+    tk.Label(win, text="Advanced", bg=bg, fg="#aaaaff",
+             font=("Segoe UI", 10, "bold")).grid(
+        row=row_offset, column=0, columnspan=2, pady=(10, 2), sticky="w", padx=8)
+    row_offset += 1
+
+    claude_path_var = tk.StringVar(value=config.get("claude_app_path", "") or "")
+    tk.Label(win, text="Claude App Path", bg=bg, fg=fg,
+             font=("Segoe UI", 9), anchor="e").grid(
+        row=row_offset, column=0, sticky="e", **pad)
+    path_frame = tk.Frame(win, bg=bg)
+    path_frame.grid(row=row_offset, column=1, sticky="w", padx=8, pady=4)
+    path_display = tk.Entry(path_frame, textvariable=claude_path_var,
+                            bg=entry_bg, fg="#888899", insertbackground=fg,
+                            width=20, font=("Segoe UI", 8), state="readonly")
+    path_display.pack(side="left")
+
+    def browse_claude():
+        chosen = filedialog.askopenfilename(
+            title="Locate Claude App",
+            filetypes=[("Executable", "*.exe"), ("All files", "*.*")],
+            initialdir=r"C:\Users",
+        )
+        if chosen:
+            claude_path_var.set(chosen)
+            path_display.config(fg=fg)
+
+    tk.Button(path_frame, text="Browse…", command=browse_claude,
+              bg="#2a2a4a", fg="#aaaacc", activebackground="#3a3a5a",
+              activeforeground="white", font=("Segoe UI", 8),
+              padx=8, pady=2, bd=0, cursor="hand2").pack(side="left", padx=(4, 0))
+
+    hint = "" if config.get("claude_app_path") else "Auto-detect"
+    tk.Label(win, text=hint, bg=bg, fg="#555577",
+             font=("Segoe UI", 7, "italic")).grid(
+        row=row_offset + 1, column=1, sticky="w", padx=8)
+    row_offset += 2
+
+    defib_restore_var = tk.BooleanVar(value=config.get("defib_restore_last_state", True))
+    tk.Checkbutton(win, text="Restore last state after Defibrillator recovery",
+                   variable=defib_restore_var, bg=bg, fg=fg, selectcolor=entry_bg,
+                   activebackground=bg, activeforeground=fg,
+                   font=("Segoe UI", 9)).grid(
+        row=row_offset, column=0, columnspan=2, sticky="w", padx=8, pady=(0, 2))
+    row_offset += 1
+
+    tk.Label(win, text="Tip: Install Desktop Commander MCP for full filesystem access.",
+             bg=bg, fg="#666688", font=("Segoe UI", 8, "italic")).grid(
+        row=row_offset, column=0, columnspan=2, pady=(4, 0))
+    row_offset += 1
+
+    def save():
+        for key, var in entries.items():
+            val = var.get()
+            if key == "default_interval_minutes":
+                try: config[key] = int(val)
+                except ValueError: pass
+            else:
+                config[key] = val
+        config["claude_app_path"] = claude_path_var.get().strip()
+        config["defib_restore_last_state"] = defib_restore_var.get()
+        for mod_name, var in mod_enabled.items():
+            config.setdefault("modules", {}).setdefault(mod_name, {})["enabled"] = var.get()
+        save_config(config)
+        on_save(config)
+        win.destroy()
+
+    btn_frame = tk.Frame(win, bg=bg)
+    btn_frame.grid(row=row_offset, column=0, columnspan=2, pady=10)
+    tk.Button(btn_frame, text="Save", command=save,
+              bg="#533483", fg="white", font=("Segoe UI", 9, "bold"),
+              padx=16, pady=4, bd=0, cursor="hand2").pack(side="left", padx=6)
+    tk.Button(btn_frame, text="Cancel", command=win.destroy,
+              bg="#333355", fg=fg, font=("Segoe UI", 9),
+              padx=16, pady=4, bd=0, cursor="hand2").pack(side="left", padx=6)
+
+    win.mainloop()
+
+
 # ---------------------------------------------------------------------------
 # About window
 # ---------------------------------------------------------------------------
@@ -1042,7 +1176,11 @@ root.mainloop()
         # On Windows, pystray's on_activate doesn't fire reliably.
         # Setting default=True on a menu item makes it the left-click action.
         active_label = "● Heartbeat Active (F1 to pause)" if self.active else "○ Heartbeat Paused (F1 to resume)"
+        ai_name = self.config.get("ai_name", "Neve") or "Neve"
+        header_label = f"— {ai_name} —"
         items = [
+            Item(header_label, None, enabled=False),
+            Menu.SEPARATOR,
             Item(active_label, self._menu_toggle, default=True),
             Menu.SEPARATOR,
             Item("Emoji Picker", self._menu_emoji_picker),
