@@ -126,26 +126,55 @@ def toggle_advanced():
         adv_btn.config(text='▼  Advanced Settings')
 adv_btn.config(command=lambda: [adv_open.set(not adv_open.get()), toggle_advanced()])
 
-# API key rows
+# API key rows — masked, with 👁 reveal and ✕ clear button
 adv_entries = {}
 ADV_FIELDS = [
-    ('ElevenLabs API Key', 'elevenlabs_api_key', 'ElevenLabs API key for voice output.\nGet yours at elevenlabs.io/app'),
+    ('ElevenLabs API Key', 'elevenlabs_api_key', 'ElevenLabs API key for voice output.\nGet yours at elevenlabs.io/app\nClick ✕ to clear and re-enter a new key.'),
 ]
 for label, key, tip in ADV_FIELDS:
-    var = tk.StringVar(value=str(config.get(key, '')))
-    ent = field_row(adv_frame, label, var, tip, bg_=adv_bg, show='*')
-    # Eye toggle — placed on the same row by patching its parent frame
+    existing_val = str(config.get(key, ''))
+    var = tk.StringVar(value=existing_val)
+
+    row = tk.Frame(adv_frame, bg=adv_bg)
+    row.pack(fill='x', padx=10, pady=4)
+    tk.Label(row, text=label, bg=adv_bg, fg=fg, font=('Segoe UI', 9),
+             width=20, anchor='e').pack(side='left')
+
+    ent = tk.Entry(row, textvariable=var, bg='#0e0e22', fg=fg,
+                   insertbackground=fg, width=28, font=('Segoe UI', 9),
+                   show='*' if existing_val else '')
+    ent.pack(side='left', padx=(4, 2))
+
+    # 👁 toggle — only works when field has content
     eye_var = tk.BooleanVar(value=False)
     def _make_eye(e=ent, ev=eye_var):
-        def _t(): e.config(show='' if ev.get() else '*')
+        def _t():
+            if e.get():
+                e.config(show='' if ev.get() else '*')
+            else:
+                ev.set(False)
         return _t
-    # Find the last child of ent's parent and add eye button after ⓘ
-    parent_row = ent.master
-    tk.Checkbutton(parent_row, text='👁', variable=eye_var,
-                   command=_make_eye(ent, eye_var),
+    tk.Checkbutton(row, text='👁', variable=eye_var, command=_make_eye(ent, eye_var),
                    bg=adv_bg, selectcolor=adv_bg, activebackground=adv_bg,
                    font=('Segoe UI', 10), relief='flat', bd=0,
                    cursor='hand2', indicatoron=False).pack(side='left', padx=2)
+
+    # ✕ clear — wipes field so user can type/paste a new key
+    def _make_clear(e=ent, v=var, ev=eye_var):
+        def _c():
+            v.set('')
+            e.config(show='')
+            ev.set(False)
+            e.focus()
+        return _c
+    tk.Button(row, text='✕', command=_make_clear(ent, var, eye_var),
+              bg=adv_bg, fg='#884444', font=('Segoe UI', 10),
+              relief='flat', bd=0, cursor='hand2', padx=4).pack(side='left', padx=2)
+
+    il = tk.Label(row, text='\u24d8', bg=adv_bg, fg='#555588',
+                  font=('Segoe UI', 10), cursor='question_arrow')
+    il.pack(side='left', padx=(2, 0))
+    Tooltip(il, tip)
     adv_entries[key] = var
 
 # Claude app path row
@@ -239,8 +268,7 @@ def save():
         config[key] = int(val) if key == 'default_interval_minutes' else val
     config['defib_restore_last_state'] = dv.get()
     for key, var in adv_entries.items():
-        val = var.get().strip()
-        if val: config[key] = val
+        config[key] = var.get().strip()  # save even if empty — allows clearing
     config['claude_app_path'] = claude_path_var.get().strip()
     if config.get('elevenlabs_voice_id'):
         config.setdefault('modules', {}).setdefault('voice_output', {})['voice_id'] = config['elevenlabs_voice_id']

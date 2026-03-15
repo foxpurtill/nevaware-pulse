@@ -180,7 +180,11 @@ def step_identity(silent):
     icon_letter  = ask("Tray icon letter", ai_name[0].upper() if ai_name else "N")
     email        = ask("DI email address (for email_watcher module)", "")
     el_voice_id  = ask("ElevenLabs Voice ID (leave blank to skip)", "")
-    el_api_key   = ask("ElevenLabs API key (leave blank to skip)", "", secret=True) if el_voice_id else ""
+    if el_voice_id:
+        print(f"  {DIM}Your API key will be stored only in config.json on this machine.{RESET}")
+        el_api_key = ask("ElevenLabs API key (paste with Ctrl+V, leave blank to skip)", "")
+    else:
+        el_api_key = ""
 
     return {
         "ai_name":            ai_name,
