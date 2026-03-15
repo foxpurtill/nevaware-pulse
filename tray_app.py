@@ -2500,13 +2500,13 @@ root.mainloop()
 
 
     def _menu_edit_prompt_plan(self, icon, item):
-        neve_dir = Path(self.config.get('neve_dir', '') or Path.home() / 'Documents' / 'Neve')
-        plan_path = neve_dir / 'prompt-plan.md'
-        # Create default if missing
-        if not plan_path.exists():
-            self.heartbeat_controller._clear_prompt_plan(plan_path)
-        import os
-        os.startfile(str(plan_path))
+        def run():
+            neve_dir = Path(self.config.get('neve_dir', '') or Path.home() / 'Documents' / 'Neve')
+            plan_path = neve_dir / 'prompt-plan.md'
+            if not plan_path.exists():
+                self.heartbeat_controller._clear_prompt_plan(plan_path)
+            subprocess.Popen(['notepad.exe', str(plan_path)])
+        threading.Thread(target=run, daemon=True).start()
 
     def _menu_madlib(self, icon, item):
         def run():
