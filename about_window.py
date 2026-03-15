@@ -81,18 +81,23 @@ def _prompt_restart(base_dir: Path):
     dlg = tk.Toplevel(win)
     dlg.title('Update Applied')
     dlg.configure(bg=bg)
+    dlg.geometry('380x160')
     dlg.resizable(False, False)
     dlg.attributes('-topmost', True)
     dlg.grab_set()
 
-    tk.Label(dlg, text='\u2713 Pulse has been updated!',
-             bg=bg, fg='#66cc88', font=('Segoe UI', 11, 'bold'),
-             padx=24, pady=(16, 4)).pack(pady=(16, 4))
     tk.Label(dlg,
-             text='Restart Pulse now to apply the changes.\n'
-                  'This will stop Pulse and relaunch it automatically.',
-             bg=bg, fg=fg, font=('Segoe UI', 9),
-             justify='center', padx=24).pack(pady=(0, 12))
+             text='\u2713 Pulse has been updated!',
+             bg=bg, fg='#66cc88',
+             font=('Segoe UI', 11, 'bold'),
+             anchor='center').pack(fill='x', padx=24, pady=(20, 6))
+
+    tk.Label(dlg,
+             text='Restart Pulse now to apply the changes.\nThis will stop Pulse and relaunch it automatically.',
+             bg=bg, fg=fg,
+             font=('Segoe UI', 9),
+             justify='center',
+             anchor='center').pack(fill='x', padx=24, pady=(0, 14))
 
     btn_row = tk.Frame(dlg, bg=bg)
     btn_row.pack(pady=(0, 16))
@@ -104,23 +109,28 @@ def _prompt_restart(base_dir: Path):
         if not pythonw.exists():
             pythonw = Path(sys.executable)
         launcher = base_dir / 'launcher.pyw'
-        # Kill running Pulse, then relaunch
         subprocess.Popen(
             ['powershell', '-NoProfile', '-Command',
              f'Stop-Process -Name pythonw -ErrorAction SilentlyContinue; '
              f'Start-Sleep -Milliseconds 800; '
              f'Start-Process "{pythonw}" "{launcher}"'],
-            creationflags=0x08000008  # DETACHED + CREATE_NO_WINDOW
+            creationflags=0x08000008
         )
 
     tk.Button(btn_row, text='Restart Pulse Now',
               command=do_restart,
-              bg='#1a3a2a', fg='#66cc88', font=('Segoe UI', 9, 'bold'),
+              bg='#1a3a2a', fg='#66cc88',
+              font=('Segoe UI', 9, 'bold'),
               padx=20, pady=6, bd=0, cursor='hand2').pack(side='left', padx=6)
+
     tk.Button(btn_row, text='Later',
               command=dlg.destroy,
-              bg='#222244', fg=muted, font=('Segoe UI', 9),
+              bg='#222244', fg=muted,
+              font=('Segoe UI', 9),
               padx=20, pady=6, bd=0, cursor='hand2').pack(side='left', padx=6)
+
+    dlg.update_idletasks()
+    dlg.lift()
 
 update_btn = tk.Button(win, text='\u21bb  Check for Updates',
                        command=do_update,
