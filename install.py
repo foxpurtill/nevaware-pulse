@@ -464,6 +464,7 @@ def step_done(install_dir):
 
     print()
     input(f"  {DIM}Press Enter to exit the installer...{RESET} ")
+    sys.exit(0)
 
 # ── Main ─────────────────────────────────────────────────────────────────────
 def main():
