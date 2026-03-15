@@ -163,6 +163,8 @@ def step_deps():
 def step_identity(silent):
     section("Step 4 — DI Identity")
     info("These set your DI's name, email, and voice. All optional — configure later in Settings.")
+    info(f"{DIM}Note: Pulse works by injecting prompts into the Claude desktop app directly.")
+    info(f"A Claude API key is NOT required. Pulse uses the app, not the API.{RESET}")
     print()
 
     if silent:
@@ -417,6 +419,10 @@ def step_desktop_commander(silent):
     info("Desktop Commander gives Pulse filesystem and process access.")
     info("Install from: claude.ai → Settings → Integrations")
     info("(Not the Windows Store version — use the browser UI)")
+    print()
+    info(f"{DIM}Important: Pulse injects heartbeat prompts into the Claude desktop app.")
+    info(f"Claude desktop app must be installed and running for heartbeats to fire.")
+    info(f"No API key needed — Pulse talks to the app window, not the API.{RESET}")
     print()
     if not silent:
         input(f"  {DIM}Press Enter to continue...{RESET} ")
