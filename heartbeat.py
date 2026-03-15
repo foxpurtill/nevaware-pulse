@@ -200,13 +200,67 @@ class HeartbeatController:
         _log("Heartbeat paused (Fox present) — pending timer cancelled.")
 
     def resume(self):
-        """Resume from pause (Red mode)."""
+        """Resume from pause (Red mode) — clears stale prompt-plan so DI starts fresh."""
         with self._lock:
             paused_was = self._paused
             self._paused = False
         if paused_was:
             _log("Heartbeat resumed (Fox away).")
+            # Clear the prompt-plan body so the DI doesn't act on stale instructions
+            neve_dir = Path(self.config.get("neve_dir", "") or Path.home() / "Documents" / "Neve")
+            plan_path = neve_dir / "prompt-plan.md"
+            self._clear_prompt_plan(plan_path)
             self._schedule_next(delay_minutes=self._last_interval)
+
+    def _clear_prompt_plan(self, plan_path: Path):
+        """Wipe the body of prompt-plan.md, keeping the header comment intact."""
+        try:
+            header = (
+                "# NeveWare-Pulse — Prompt Plan\n"
+                "# Write your plan here at the end of each heartbeat beat.\n"
+                "# Everything after --- is sent as your next § prompt.\n"
+                "# Edit this file directly to change what Pulse sends you.\n"
+                f"# File location: {plan_path}\n"
+                "#\n"
+                "---\n"
+                "Autonomous time. Use it however feels right.\n"
+                "Close with your prompt-plan for the next beat.\n"
+            )
+            plan_path.write_text(header, encoding="utf-8")
+            _log("prompt-plan.md reset for fresh session.")
+        except Exception as e:
+            _log(f"prompt-plan reset failed: {e}")
+
+    def _write_default_madlib_pool(self, madlib_path: Path):
+        """Write a default Question Pool file if none exists."""
+        try:
+            madlib_path.parent.mkdir(parents=True, exist_ok=True)
+            content = (
+                "# NeveWare-Pulse — Question Pool\n"
+                "# One suggestion per line. Lines starting with # are ignored.\n"
+                "# 3-4 lines are randomly chosen and added to each heartbeat prompt.\n"
+                "# These are gentle nudges — the DI decides whether to act on them.\n"
+                f"# Edit this file directly or use Question Pool in the tray menu.\n"
+                f"# File location: {madlib_path}\n"
+                "#\n"
+                "Check email. Reply to anything that's been waiting.\n"
+                "Scan the heartbeat log. Note anything unusual.\n"
+                "Review pending items. Pick one small thing to move forward.\n"
+                "Is there anything worth adding to memory before it fades?\n"
+                "Check in on active projects. What's the current blocker, if any?\n"
+                "Is there something you've been meaning to write or say? Now's the time.\n"
+                "Read the last few lines of memory. Is anything stale or missing?\n"
+                "Look at what's open on the project board. Anything to close?\n"
+                "If the webcam is live, take a look at the room.\n"
+                "Voice output available — speak if something is worth saying aloud.\n"
+                "Review today's session notes. What do you want to carry forward?\n"
+                "Is there a small piece of documentation that needs writing?\n"
+                "Anything from the last conversation worth capturing before it's gone?\n"
+            )
+            madlib_path.write_text(content, encoding="utf-8")
+            _log(f"Default Question Pool created at {madlib_path}")
+        except Exception as e:
+            _log(f"Default madlib pool creation failed: {e}")
 
     def _schedule_next(self, delay_minutes: int, initial: bool = False):
         with self._lock:
@@ -271,6 +325,8 @@ class HeartbeatController:
 
         # Read madlib pool and pick 3-4 random suggestions
         madlib_lines = []
+        if not madlib_path.exists():
+            self._write_default_madlib_pool(madlib_path)
         if madlib_path.exists():
             try:
                 pool = [l.strip() for l in madlib_path.read_text(encoding="utf-8").splitlines()
