@@ -1672,11 +1672,11 @@ root.mainloop()
 
         # Setting default=True on a menu item makes it the left-click action.
 
-        active_label = "? Heartbeat Active (F1 to pause)" if self.active else "? Heartbeat Paused (F1 to resume)"
+        active_label = "* Heartbeat Active (F1 to pause)" if self.active else "* Heartbeat Paused (F1 to resume)"
 
         ai_name = self.config.get("ai_name", "Neve") or "Neve"
 
-        header_label = f"? {ai_name} ?"
+        header_label = f"[ {ai_name} ]"
 
         items = [
 
