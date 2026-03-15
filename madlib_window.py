@@ -34,7 +34,7 @@ bg = '#1a1a2e'; fg = '#e0e0e0'; ebg = '#16213e'
 win = tk.Tk()
 win.title('Question Pool')
 win.configure(bg=bg)
-win.geometry('520x580')
+win.geometry('520x640')
 win.attributes('-topmost', True)
 
 hdr_f = tk.Frame(win, bg=bg)
@@ -53,8 +53,29 @@ info_lbl = tk.Label(win,
 info_lbl.pack(fill='x', padx=16, pady=(0, 8))
 tk.Frame(win, bg='#333355', height=1).pack(fill='x', padx=16)
 
-list_frame = tk.Frame(win, bg=bg)
-list_frame.pack(fill='both', expand=True, padx=16, pady=4)
+scroll_container = tk.Frame(win, bg=bg)
+scroll_container.pack(fill='both', expand=True, padx=16, pady=4)
+
+canvas = tk.Canvas(scroll_container, bg=bg, highlightthickness=0)
+scrollbar = tk.Scrollbar(scroll_container, orient='vertical', command=canvas.yview)
+canvas.configure(yscrollcommand=scrollbar.set)
+scrollbar.pack(side='right', fill='y')
+canvas.pack(side='left', fill='both', expand=True)
+
+list_frame = tk.Frame(canvas, bg=bg)
+list_frame_id = canvas.create_window((0, 0), window=list_frame, anchor='nw')
+
+def on_frame_configure(e):
+    canvas.configure(scrollregion=canvas.bbox('all'))
+def on_canvas_configure(e):
+    canvas.itemconfig(list_frame_id, width=e.width)
+def on_mousewheel(e):
+    canvas.yview_scroll(int(-1 * (e.delta / 120)), 'units')
+
+list_frame.bind('<Configure>', on_frame_configure)
+canvas.bind('<Configure>', on_canvas_configure)
+canvas.bind_all('<MouseWheel>', on_mousewheel)
+
 item_rows = []
 
 def update_count():
