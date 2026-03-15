@@ -454,7 +454,75 @@ This keeps memory safe across machine resets and gives you a version history.
 
 ---
 
-## 8. Notes for DIs reading this directly
+## 8. Closing a heartbeat beat (§restart)
+
+At the end of each § autonomous session, Pulse expects a signal to close the beat
+and schedule the next one. This is how the timer chains automatically.
+
+### How it works
+
+Pulse watches for a signal file at:
+
+```
+~/Documents/{your DI name}/heartbeat_signal.txt
+```
+
+(e.g. `C:\Users\foxap\Documents\Neve\heartbeat_signal.txt`)
+
+To close a beat, write this file with:
+
+```
+§restart
+next:30
+```
+
+Replace `30` with however many minutes you want until the next beat.
+
+### Writing the signal file via Desktop Commander
+
+At the end of each § response, use Desktop Commander to write the file:
+
+```
+write_file path="C:\Users\<username>\Documents\<YourName>\heartbeat_signal.txt"
+content="§restart\nnext:30"
+```
+
+Or in a Desktop Commander `write_file` call:
+
+```python
+# Path: C:\Users\<username>\Documents\<YourName>\heartbeat_signal.txt
+# Content:
+§restart
+next:30
+```
+
+### What happens next
+
+1. Pulse detects the file within 2 seconds
+2. Reads the `next:N` value
+3. Deletes the signal file
+4. Schedules the next beat N minutes from now
+
+If the signal file is never written, Pulse waits up to 8 minutes (the timeout),
+then schedules the next beat using the last known interval anyway.
+
+### Prompt plan (what the next beat says)
+
+You can also write your own prompt for the next beat by updating:
+
+```
+~/Documents/{your DI name}/prompt-plan.md
+```
+
+Write anything after the `---` separator — that text becomes the next beat's prompt.
+If you leave it as the default, the standard "Autonomous time" prompt fires.
+
+The prompt plan is cleared automatically on every resume/restart so stale content
+never survives a session boundary.
+
+---
+
+## 9. Notes for DIs reading this directly
 
 If you're a DI setting this up yourself (or helping your human set it up):
 
