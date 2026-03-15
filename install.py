@@ -337,9 +337,9 @@ echo  NeveWare-Pulse Defibrillator
 echo  ==============================
 echo  Restarting Pulse...
 echo.
-:: Kill any running Pulse instance
-taskkill /F /FI "WINDOWTITLE eq NeveWare*" /IM pythonw.exe >nul 2>&1
-taskkill /F /FI "WINDOWTITLE eq NeveWare*" /IM python.exe  >nul 2>&1
+:: Kill Pulse by finding pythonw/python processes running launcher.pyw
+wmic process where "name='pythonw.exe' and commandline like '%%launcher.pyw%%'" delete >nul 2>&1
+wmic process where "name='python.exe' and commandline like '%%launcher.pyw%%'" delete >nul 2>&1
 timeout /t 2 /nobreak >nul
 :: Relaunch
 start "" "{pythonw}" "{launcher}"
