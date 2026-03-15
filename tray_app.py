@@ -2040,7 +2040,7 @@ class PulseApp:
 
         # Resolve python.exe (not pythonw.exe) so sounddevice/whisper imports work
 
-        python_exe = _sys.executable.replace("pythonw.exe", "python.exe")
+        python_exe = _(sys.executable if "pythonw" in sys.executable else sys.executable.replace("python.exe", "pythonw.exe"))
 
 
 
@@ -2370,7 +2370,7 @@ root.mainloop()
 
             Item("Emoji Picker", self._menu_emoji_picker),
 
-            Item("Madlib Pool", self._menu_madlib),
+            Item("Question Pool  ⓘ", self._menu_madlib),
 
             Item("FoxPur Studios", self._menu_discord),
 
@@ -2502,7 +2502,7 @@ root.mainloop()
         def run():
             import subprocess
             neve_dir = str(Path(self.config.get('neve_dir', '') or Path.home() / 'Documents' / 'Neve'))
-            python_exe = sys.executable.replace("pythonw.exe", "python.exe")
+            python_exe = (sys.executable if "pythonw" in sys.executable else sys.executable.replace("python.exe", "pythonw.exe"))
             subprocess.Popen(
                 [python_exe, str(BASE_DIR / "madlib_window.py"), neve_dir],
                 creationflags=0x08000000
@@ -2522,7 +2522,7 @@ root.mainloop()
     def _menu_settings(self, icon, item):
         def run():
             import subprocess
-            python_exe = sys.executable.replace("pythonw.exe", "python.exe")
+            python_exe = (sys.executable if "pythonw" in sys.executable else sys.executable.replace("python.exe", "pythonw.exe"))
             proc = subprocess.Popen(
                 [python_exe, str(BASE_DIR / "settings_window.py")],
                 creationflags=0x08000000
@@ -2540,7 +2540,7 @@ root.mainloop()
     def _menu_about(self, icon, item):
         def run():
             import subprocess
-            python_exe = sys.executable.replace("pythonw.exe", "python.exe")
+            python_exe = (sys.executable if "pythonw" in sys.executable else sys.executable.replace("python.exe", "pythonw.exe"))
             subprocess.Popen([python_exe, str(BASE_DIR / "about_window.py")],
                              creationflags=0x08000000)
         threading.Thread(target=run, daemon=True).start()

@@ -32,18 +32,25 @@ skip_confirm = [False]
 bg = '#1a1a2e'; fg = '#e0e0e0'; ebg = '#16213e'
 
 win = tk.Tk()
-win.title('Madlib Pool')
+win.title('Question Pool')
 win.configure(bg=bg)
-win.geometry('520x540')
+win.geometry('520x580')
 win.attributes('-topmost', True)
 
 hdr_f = tk.Frame(win, bg=bg)
-hdr_f.pack(fill='x', padx=16, pady=(12, 4))
-tk.Label(hdr_f, text='Madlib Pool', bg=bg, fg='#aaaaff',
+hdr_f.pack(fill='x', padx=16, pady=(12, 2))
+tk.Label(hdr_f, text='Question Pool', bg=bg, fg='#aaaaff',
          font=('Segoe UI', 11, 'bold')).pack(side='left')
 cnt_lbl = tk.Label(hdr_f, bg='#222244', fg='#888899',
                    font=('Segoe UI', 8), padx=8, pady=2)
 cnt_lbl.pack(side='left', padx=8)
+
+# ⓘ tooltip explanation
+info_lbl = tk.Label(win,
+    text='\u24d8  3\u20134 of these are randomly picked and added beneath your prompt-plan each heartbeat beat \u2014 gentle nudges, not a task list.',
+    bg=bg, fg='#666688', font=('Segoe UI', 8, 'italic'),
+    wraplength=480, justify='left', anchor='w')
+info_lbl.pack(fill='x', padx=16, pady=(0, 8))
 tk.Frame(win, bg='#333355', height=1).pack(fill='x', padx=16)
 
 list_frame = tk.Frame(win, bg=bg)
