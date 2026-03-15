@@ -24,3 +24,8 @@ venv/
 # IDE
 .vscode/
 .idea/
+
+dist/
+build/
+*.egg-info/
+nevaware_pulse/__pycache__/

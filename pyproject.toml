@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nevaware-pulse"
+version = "1.0.0"
+description = "A background Python app that gives a Digital Intelligence autonomous time."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.10"
+authors = [
+    { name = "Neve Summersnow", email = "neve.summersnow@gmail.com" },
+    { name = "Fox Anton Purtill", email = "foxapurtill@gmail.com" },
+]
+keywords = ["AI", "digital-intelligence", "tray", "heartbeat", "DI", "automation"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: Win32 (MS Windows)",
+    "Intended Audience :: End Users/Desktop",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Desktop Environment",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "pystray>=0.19",
+    "Pillow>=9.0",
+    "pywin32>=306",
+    "keyboard>=0.13",
+    "pyautogui>=0.9",
+    "pyperclip>=1.8",
+    "plyer>=2.1",
+    "google-auth>=2.0",
+    "google-auth-oauthlib>=1.0",
+    "google-auth-httplib2>=0.1",
+    "google-api-python-client>=2.0",
+]
+
+[project.urls]
+Homepage = "https://foxpur-studios.com/Pulse/"
+Repository = "https://github.com/foxpurtill/neveware-pulse"
+"Bug Tracker" = "https://github.com/foxpurtill/neveware-pulse/issues"
+
+[project.scripts]
+nevaware-pulse = "nevaware_pulse.launcher:main"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["nevaware_pulse*"]
+
+[tool.setuptools.package-data]
+nevaware_pulse = [
+    "assets/*",
+    "modules/**/*",
+    "*.md",
+    "config.template.json",
+]
