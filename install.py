@@ -200,8 +200,6 @@ MODULES_MENU = [
      "Open webcam feed from tray menu (requires webcam MCP server)"),
     ("mic_listener",  "Mic Listener",
      "Listen via microphone, inject spoken context via Whisper"),
-    ("neve_memory",   "Neve Memory",
-     "Automatically back up your DI's memory file to a GitHub repo on each heartbeat.\n     Requires the neve_memory module files and a GitHub repo configured in Settings."),
 ]
 
 def step_modules(silent):

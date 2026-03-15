@@ -197,7 +197,6 @@ MODULES = [
     ('voice_output',  'Voice Output',   'Speaks DI responses aloud via ElevenLabs TTS + ffplay.\nRequires ElevenLabs API key in Advanced Settings.'),
     ('webcam_viewer', 'Webcam Viewer',  'Adds a tray menu item to open the webcam feed at localhost:3333.'),
     ('mic_listener',  'Mic Listener',   'Listens via microphone and injects spoken context into the heartbeat prompt via Whisper.'),
-    ('neve_memory',   'Neve Memory',    'Backs up memory.json to GitHub on each heartbeat.\nRequires neve_memory module files installed.'),
 ]
 module_vars = {}
 mods_cfg = config.get('modules', {})
