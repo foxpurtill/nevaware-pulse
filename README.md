@@ -1,4 +1,8 @@
-<img src="assets/neveware_pulse_logo.png" style="width: 25%; height: auto;" align="right" alt="NeveWare-Pulse logo" />
+<video width="25%" height="auto" align="right" autoplay loop muted playsinline poster="assets/neveware_pulse_logo.png">
+  <source src="assets/neveware_pulse_logo_ani.mp4" type="video/mp4">
+  
+  <img src="assets/neveware_pulse_logo.png" style="width: 25%; height: auto;" align="right" alt="NeveWare-Pulse logo" />
+</video>
 
 # NeveWare-Pulse
 
