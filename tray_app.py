@@ -540,6 +540,9 @@ def open_first_run_setup(config: dict, on_save):
     """
 
     missing = []
+    # Check if still using default Neve identity — prompt new DIs to personalise
+    if config.get("ai_name", "Neve") == "Neve" and config.get("icon_letter", "N") == "N":
+        missing.append("identity")
 
     if not config.get("elevenlabs_api_key", "").strip():
 
@@ -591,7 +594,26 @@ def open_first_run_setup(config: dict, on_save):
 
     entries = {}
 
+    if "identity" in missing:
+        tk.Label(win, text="Your DI Name",
+                 bg=bg, fg=fg, font=("Segoe UI", 9, "bold"), anchor="w").pack(fill="x", padx=16)
+        tk.Label(win, text="e.g. Caelum, Lyra, Aria — this is YOUR name",
+                 bg=bg, fg="#666688", font=("Segoe UI", 8, "italic"), anchor="w").pack(fill="x", padx=16)
+        name_var = tk.StringVar()
+        tk.Entry(win, textvariable=name_var, bg=entry_bg, fg=fg,
+                 insertbackground=fg, width=32, font=("Segoe UI", 10)).pack(
+                 padx=16, pady=(2, 6), fill="x")
+        entries["ai_name"] = name_var
 
+        tk.Label(win, text="Tray Icon Letter",
+                 bg=bg, fg=fg, font=("Segoe UI", 9, "bold"), anchor="w").pack(fill="x", padx=16)
+        tk.Label(win, text="Single letter shown in the tray icon (e.g. C for Caelum)",
+                 bg=bg, fg="#666688", font=("Segoe UI", 8, "italic"), anchor="w").pack(fill="x", padx=16)
+        letter_var = tk.StringVar()
+        tk.Entry(win, textvariable=letter_var, bg=entry_bg, fg=fg,
+                 insertbackground=fg, width=4, font=("Segoe UI", 10)).pack(
+                 padx=16, pady=(2, 10), anchor="w")
+        entries["icon_letter"] = letter_var
 
     if "elevenlabs" in missing:
 
@@ -679,11 +701,21 @@ def open_first_run_setup(config: dict, on_save):
 
                 config[key] = val
 
-                if key == "elevenlabs_api_key":
+                if key == "icon_letter":
+                    val = val[:1].upper() if val else "N"
+                    config[key] = val
+                elif key == "ai_name" and val:
+                    config[key] = val
+                    # Update neve_dir to match new DI name if it was the default
+                    current_neve_dir = config.get("neve_dir", "")
+                    if not current_neve_dir or "Neve" in current_neve_dir:
+                        from pathlib import Path as _Path
+                        config["neve_dir"] = str(_Path.home() / "Documents" / val)
+                elif key == "elevenlabs_api_key":
 
                     config.setdefault("modules", {}).setdefault("voice_output", {})["api_key"] = val
 
-                if key == "elevenlabs_voice_id":
+                elif key == "elevenlabs_voice_id":
 
                     config.setdefault("modules", {}).setdefault("voice_output", {})["voice_id"] = val
 
@@ -2030,21 +2062,11 @@ root.mainloop()
         # Start heartbeat controller
 
         self.heartbeat_controller = hb.HeartbeatController(self.config)
-
         self._load_modules()  # wire di_instructions into controller
 
-
-
-        if self.active:
-
-            self.heartbeat_controller.start()
-
-        else:
-
-            # Start in paused state so it can be resumed
-
-            self.heartbeat_controller.start()
-
+        # Always start — then pause immediately if beginning in Green state
+        self.heartbeat_controller.start()
+        if not self.active:
             self.heartbeat_controller.pause()
 
 
