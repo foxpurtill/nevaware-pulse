@@ -52,12 +52,15 @@ def do_update():
         git_dir  = base_dir / '.git'
         updated  = False
 
+        CREATE_NO_WINDOW = 0x08000000
+
         if git_dir.exists():
             try:
                 result = subprocess.run(
                     ['git', 'pull'],
                     cwd=str(base_dir),
-                    capture_output=True, text=True, timeout=30
+                    capture_output=True, text=True, timeout=30,
+                    creationflags=CREATE_NO_WINDOW
                 )
                 out = (result.stdout + result.stderr).strip()
                 if 'Already up to date' in out:
@@ -118,8 +121,8 @@ def _prompt_restart(base_dir: Path):
         defib = base / 'defibrillator.bat'
         if defib.exists():
             subprocess.Popen(
-                ['cmd', '/c', 'start', '', str(defib)],
-                creationflags=0x00000008  # DETACHED_PROCESS
+                ['cmd', '/c', str(defib)],
+                creationflags=0x08000000  # CREATE_NO_WINDOW
             )
         else:
             pythonw = Path(sys.executable).with_name('pythonw.exe')
