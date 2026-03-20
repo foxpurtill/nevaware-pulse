@@ -340,13 +340,13 @@ def step_shortcuts(install_dir, silent):
 
     # ── Defibrillator .bat ───────────────────────────────────────────────────
     bat_content = f"""@echo off
-setlocal
+setlocal enabledelayedexpansion
 :: NeveWare-Pulse Defibrillator — kills old instance and relaunches
 set "PID_FILE=%APPDATA%\\NeveWare\\pulse.pid"
 :: Kill by PID (precise)
 if exist "%PID_FILE%" (
     set /p OLD_PID=<"%PID_FILE%"
-    taskkill /PID %OLD_PID% /F >nul 2>&1
+    taskkill /PID !OLD_PID! /F >nul 2>&1
     del "%PID_FILE%" >nul 2>&1
 )
 :: Fallback: kill any pythonw still holding tray_app or launcher

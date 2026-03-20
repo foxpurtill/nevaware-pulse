@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal enabledelayedexpansion
 
 :: NeveWare-Pulse Defibrillator
 :: Kills the running Pulse instance and relaunches it.
@@ -12,7 +12,7 @@ set "LAUNCHER=%BASE%launcher.pyw"
 :: --- Kill by PID (fast and precise) ---
 if exist "%PID_FILE%" (
     set /p OLD_PID=<"%PID_FILE%"
-    taskkill /PID %OLD_PID% /F >nul 2>&1
+    taskkill /PID !OLD_PID! /F >nul 2>&1
     del "%PID_FILE%" >nul 2>&1
 )
 
