@@ -301,12 +301,13 @@ class HeartbeatController:
 
     def _build_heartbeat_prompt(self) -> str:
         """
-        Build the § prompt from the DI's own prompt-plan.md plus random madlib nudges.
+        Build the § prompt from the DI's own prompt-plan.md plus random question pool nudges.
 
         Structure:
           § timestamp
-          [contents of prompt-plan.md — written by the DI at end of last beat]
-          [3-4 randomly chosen lines from madlib-pool.md]
+          [custom_prompt.md if present — one-shot override, deleted after use]
+          [otherwise: contents of prompt-plan.md — written by the DI at end of last beat]
+          [3-4 randomly chosen lines from madlib-pool.md (Question Pool)]
           [module instructions if any]
           [voice/mic context if available]
           [signal file reminder — once per session only]
@@ -316,8 +317,21 @@ class HeartbeatController:
 
         neve_dir = Path(self.config.get("neve_dir", "") or Path.home() / "Documents" / "Neve")
 
-        # Read the DI's own prompt plan
-        plan_text = _read_prompt_plan(neve_dir)
+        # Check for custom_prompt.md — one-shot DI-requested heartbeat override.
+        # Patricia writes the DI's request into this file before going afk.
+        # Pulse serves it as the first prompt, deletes it, then resumes normal cycle.
+        custom_prompt_path = neve_dir / "custom_prompt.md"
+        if custom_prompt_path.exists():
+            try:
+                plan_text = custom_prompt_path.read_text(encoding="utf-8").strip()
+                custom_prompt_path.unlink()
+                _log("custom_prompt.md served and cleared.")
+            except Exception as e:
+                _log(f"custom_prompt.md read failed: {e}")
+                plan_text = ""
+        else:
+            # Read the DI's own prompt plan
+            plan_text = _read_prompt_plan(neve_dir)
 
         # Fall back to a random default if no plan exists yet
         if not plan_text:
