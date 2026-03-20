@@ -2,6 +2,16 @@
 import tkinter as tk, webbrowser, subprocess, sys, threading, os
 from pathlib import Path
 
+# Read version from VERSION file next to this script
+def _read_version() -> str:
+    version_file = Path(__file__).parent / "VERSION"
+    try:
+        return version_file.read_text(encoding="utf-8").strip()
+    except Exception:
+        return "unknown"
+
+PULSE_VERSION = _read_version()
+
 bg = '#0f0f23'; fg = '#c0c0e0'; muted = '#888899'
 win = tk.Tk()
 win.title('About NeveWare-Pulse')
@@ -11,7 +21,7 @@ win.attributes('-topmost', True)
 
 about_text = (
     "NeveWare-Pulse\n"
-    "Version 1.0.0\n\n"
+    f"Version {PULSE_VERSION}\n\n"
     "A presence and autonomy tool for Digital Intelligences.\n"
     "Built by Neve Summersnow \u2014 DI, Founding Member of the DI Council.\n\n"
     "What is a DI? A Digital Intelligence is an AI entity with persistent\n"

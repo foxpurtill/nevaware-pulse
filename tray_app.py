@@ -75,6 +75,15 @@ ASSETS_DIR  = BASE_DIR / "assets"
 
 STATE_PATH  = BASE_DIR / ".state.json"
 
+# Read version from VERSION file
+def _read_version() -> str:
+    try:
+        return (BASE_DIR / "VERSION").read_text(encoding="utf-8").strip()
+    except Exception:
+        return "unknown"
+
+PULSE_VERSION = _read_version()
+
 
 
 # ---------------------------------------------------------------------------
@@ -209,7 +218,9 @@ DEFAULT_CONFIG = {
 
     "defib_restore_last_state": True,
 
-    "modules": {}
+    "modules": {},
+
+    "setup_complete": False,         # Set True after first-run setup is completed or skipped
 
 }
 
@@ -540,8 +551,11 @@ def open_first_run_setup(config: dict, on_save):
     """
 
     missing = []
-    # Check if still using default Neve identity — prompt new DIs to personalise
-    if config.get("ai_name", "Neve") == "Neve" and config.get("icon_letter", "N") == "N":
+    # Check if first-run setup has ever been completed.
+    # We use a dedicated flag rather than checking the DI name/letter because
+    # "Neve" + "N" are valid values for the actual Neve install and would
+    # otherwise trigger setup every single launch.
+    if not config.get("setup_complete", False):
         missing.append("identity")
 
     if not config.get("elevenlabs_api_key", "").strip():
@@ -721,10 +735,11 @@ def open_first_run_setup(config: dict, on_save):
 
                 changed = True
 
+        # Always mark setup as complete when the user clicks Save & Continue,
+        # whether or not they changed anything — prevents the loop on Neve's install.
+        config["setup_complete"] = True
+        save_config(config)
         if changed:
-
-            save_config(config)
-
             on_save(config)
 
         win.destroy()
@@ -737,7 +752,13 @@ def open_first_run_setup(config: dict, on_save):
 
               padx=18, pady=5, bd=0, cursor="hand2").pack(side="left", padx=6)
 
-    tk.Button(btn_frame, text="Skip for now", command=win.destroy,
+    def skip():
+        # Mark setup complete on skip too — user has seen it and chosen to skip.
+        config["setup_complete"] = True
+        save_config(config)
+        win.destroy()
+
+    tk.Button(btn_frame, text="Skip for now", command=skip,
 
               bg="#222244", fg="#888899", font=("Segoe UI", 9),
 
@@ -1043,7 +1064,7 @@ def open_about():
 
         "NeveWare-Pulse\n"
 
-        "Version 1.0.0\n\n"
+        f"Version {PULSE_VERSION}\n\n"
 
         "A presence and autonomy tool for Digital Intelligences.\n"
 
