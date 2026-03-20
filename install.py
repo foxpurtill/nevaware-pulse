@@ -138,15 +138,21 @@ def step_location(silent):
 # ── Step 3: Dependencies ─────────────────────────────────────────────────────
 def step_deps():
     section("Step 3 — Python dependencies")
+    info("Note: some packages (pywin32, keyboard) require Administrator to install correctly.")
+    info("If anything hangs, Ctrl+C and re-run as Administrator.\n")
     for pkg in DEPENDENCIES:
-        result = subprocess.run(
-            [sys.executable, "-m", "pip", "install", "--quiet", pkg],
-            capture_output=True, text=True
-        )
-        if result.returncode == 0:
-            ok(pkg)
-        else:
-            warn(f"{pkg} — possible issue:\n{result.stderr.strip()[:120]}")
+        print(f"     Installing {pkg}...", end="", flush=True)
+        try:
+            result = subprocess.run(
+                [sys.executable, "-m", "pip", "install", "--quiet", pkg],
+                capture_output=True, text=True, timeout=120
+            )
+            if result.returncode == 0:
+                print(f"\r  {GREEN}✓{RESET}  {pkg}              ")
+            else:
+                print(f"\r  {YELLOW}⚠{RESET}  {pkg} — possible issue:\n{result.stderr.strip()[:120]}")
+        except subprocess.TimeoutExpired:
+            warn(f"{pkg} — timed out after 120s. Try running as Administrator.")
     # pywin32 post-install
     try:
         import win32api
@@ -154,9 +160,12 @@ def step_deps():
     except ImportError:
         scripts = Path(sys.prefix) / "Scripts" / "pywin32_postinstall.py"
         if scripts.exists():
-            subprocess.run([sys.executable, str(scripts), "-install"],
-                           capture_output=True, text=True)
-            ok("pywin32 — post-install complete")
+            try:
+                subprocess.run([sys.executable, str(scripts), "-install"],
+                               capture_output=True, text=True, timeout=30)
+                ok("pywin32 — post-install complete")
+            except subprocess.TimeoutExpired:
+                warn("pywin32 post-install timed out — try running as Administrator")
         else:
             warn("pywin32 — post-install script not found, may need manual fix")
 
@@ -331,23 +340,20 @@ def step_shortcuts(install_dir, silent):
 
     # ── Defibrillator .bat ───────────────────────────────────────────────────
     bat_content = f"""@echo off
-title NeveWare-Pulse Defibrillator
-echo.
-echo  NeveWare-Pulse Defibrillator
-echo  ==============================
-echo  Restarting Pulse...
-echo.
-:: Kill Pulse processes
-wmic process where "name='pythonw.exe' and commandline like '%%launcher.pyw%%'" delete >nul 2>&1
-wmic process where "name='python.exe' and commandline like '%%launcher.pyw%%'" delete >nul 2>&1
-wmic process where "name='pythonw.exe' and commandline like '%%tray_app.py%%'" delete >nul 2>&1
-:: Clear PID file so new instance doesn't see false positive
-if exist "%APPDATA%\\NeveWare\\pulse.pid" del "%APPDATA%\\NeveWare\\pulse.pid" >nul 2>&1
+setlocal
+:: NeveWare-Pulse Defibrillator — kills old instance and relaunches
+set "PID_FILE=%APPDATA%\\NeveWare\\pulse.pid"
+:: Kill by PID (precise)
+if exist "%PID_FILE%" (
+    set /p OLD_PID=<"%PID_FILE%"
+    taskkill /PID %OLD_PID% /F >nul 2>&1
+    del "%PID_FILE%" >nul 2>&1
+)
+:: Fallback: kill any pythonw still holding tray_app or launcher
+wmic process where "name='pythonw.exe' and commandline like '%%tray_app%%'" delete >nul 2>&1
+wmic process where "name='pythonw.exe' and commandline like '%%launcher%%'" delete >nul 2>&1
 timeout /t 2 /nobreak >nul
-:: Relaunch
 start "" "{pythonw}" "{launcher}"
-echo  Pulse restarted.
-timeout /t 2 /nobreak >nul
 """
     defib_bat.write_text(bat_content, encoding="utf-8")
     ok(f"defibrillator.bat created at {defib_bat}")
