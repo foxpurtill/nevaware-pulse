@@ -516,6 +516,17 @@ def main():
         print()
         input(f"  {DIM}Press Enter to begin...{RESET} ")
 
+    # Warn if running from a ZIP extract (no .git) — installed copy won't self-update
+    if not (BASE_DIR / ".git").exists():
+        warn("You're running install.py from a directory with no git history.")
+        warn("The installed copy won't be able to use 'Check for Updates' properly.")
+        info("For full update support, clone the repo first:")
+        info("  git clone https://github.com/foxpurtill/neveware-pulse.git")
+        info("  cd neveware-pulse && python install.py")
+        print()
+        if not silent:
+            input(f"  {DIM}Press Enter to continue anyway, or Ctrl+C to cancel...{RESET} ")
+
     step_python()
     install_dir  = step_location(silent)
     step_deps()

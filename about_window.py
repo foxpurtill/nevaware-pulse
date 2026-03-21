@@ -76,7 +76,12 @@ def do_update():
             except Exception as e:
                 msg = (f'\u2717 Error: {e}', '#ff6666')
         else:
-            msg = ('Opening GitHub releases page...', '#aaaacc')
+            msg = (
+                'No git repo found — your install cannot self-update.\n'
+                'Fix: reinstall from a fresh git clone (see README).\n'
+                'Opening GitHub releases for manual download...',
+                '#ffaa44'
+            )
             webbrowser.open('https://github.com/foxpurtill/neveware-pulse/releases')
 
         def on_done():
