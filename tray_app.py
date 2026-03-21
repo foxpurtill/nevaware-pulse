@@ -2044,6 +2044,14 @@ root.mainloop()
 
 
 
+        # Singleton mutex — prevents duplicate instances more reliably than PID files.
+        # Held for the lifetime of this process; auto-released on exit by the OS.
+        try:
+            import ctypes as _ct
+            self._mutex = _ct.windll.kernel32.CreateMutexW(None, True, "Global\\NeveWare-Pulse")
+        except Exception:
+            self._mutex = None
+
         # Write PID file so the Defibrillator can detect us instantly
 
         try:

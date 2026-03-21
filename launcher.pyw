@@ -38,31 +38,31 @@ CLAUDE_TITLE_PATTERNS = ["Claude", "claude"]
 PID_FILE = Path(os.environ.get("APPDATA", "")) / "NeveWare" / "pulse.pid"
 
 
-def _pid_is_alive(pid: int) -> bool:
-    """Return True if a process with this PID is currently running."""
-    try:
-        result = subprocess.run(
-            ["powershell", "-Command",
-             f"(Get-Process -Id {pid} -ErrorAction SilentlyContinue) -ne $null"],
-            capture_output=True, text=True, timeout=5
-        )
-        return result.stdout.strip().lower() == "true"
-    except Exception:
-        return False
-
-
 def is_pulse_running() -> bool:
     """
-    Return True only if the PID file exists AND that PID is still alive.
-    Fast and immune to WMI staleness — no timing issues after F10 kill.
+    Check for a running Pulse instance via Windows named mutex.
+    Instant, OS-managed, immune to PID reuse — no PowerShell needed.
     """
-    if not PID_FILE.exists():
-        return False
     try:
-        pid = int(PID_FILE.read_text().strip())
-        return _pid_is_alive(pid)
+        import ctypes
+        ERROR_ALREADY_EXISTS = 183
+        mutex = ctypes.windll.kernel32.CreateMutexW(None, False, "Global\\NeveWare-Pulse")
+        already = (ctypes.windll.kernel32.GetLastError() == ERROR_ALREADY_EXISTS)
+        ctypes.windll.kernel32.CloseHandle(mutex)
+        return already
     except Exception:
-        return False
+        # Fallback to PID file if ctypes fails
+        if not PID_FILE.exists():
+            return False
+        try:
+            pid = int(PID_FILE.read_text().strip())
+            result = subprocess.run(
+                ["tasklist", "/FI", f"PID eq {pid}", "/NH"],
+                capture_output=True, text=True, timeout=5
+            )
+            return str(pid) in result.stdout
+        except Exception:
+            return False
 
 
 def is_claude_running() -> bool:
