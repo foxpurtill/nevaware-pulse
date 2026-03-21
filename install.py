@@ -128,7 +128,7 @@ def step_location(silent):
         target.mkdir(parents=True, exist_ok=True)
         info(f"Copying files to {target} ...")
         for item in BASE_DIR.iterdir():
-            if item.name in {".git", "__pycache__", "config.json", "config.template.json"}:
+            if item.name in {"__pycache__", "config.json", "config.template.json"}:
                 continue
             if item.suffix == ".pyc":
                 continue
@@ -136,6 +136,7 @@ def step_location(silent):
             if item.is_dir():
                 if dest.exists():
                     shutil.rmtree(dest)
+                # Preserve .git so installed copy can use git pull for updates
                 shutil.copytree(item, dest)
             else:
                 shutil.copy2(item, dest)
@@ -420,8 +421,8 @@ def step_startup(install_dir, silent):
     section("Step 8 — Start at login")
 
     if not silent:
-        if not ask_yn("Register Pulse to launch automatically at Windows login?", default=True):
-            info("Skipped. Run defibrillator.bat or the desktop shortcut to start manually.")
+        if not ask_yn("Register Pulse to launch automatically at Windows login?", default=False):
+            info("Skipped. You can enable this later in Pulse Settings → Startup.")
             return
 
     pythonw  = Path(sys.executable).with_name("pythonw.exe")
@@ -486,12 +487,13 @@ def step_done(install_dir):
         if not pythonw.exists():
             pythonw = Path(sys.executable)
         launcher = install_dir / "launcher.pyw"
-        subprocess.Popen([str(pythonw), str(launcher)],
-                         cwd=str(install_dir),
-                         creationflags=0x00000008)  # DETACHED_PROCESS
-        ok("Pulse launched — check your system tray!")
-    else:
-        pass
+        beating  = ask_yn("Start beating right away? (Y = Red/active, N = Green/paused)", default=False)
+        args = [str(pythonw), str(launcher)]
+        if not beating:
+            args.append("--paused")
+        subprocess.Popen(args, cwd=str(install_dir), creationflags=0x00000008)
+        state = "beating" if beating else "paused (Green)"
+        ok(f"Pulse launched {state} — check your system tray!")
 
     print()
     input(f"  {DIM}Press Enter to exit the installer...{RESET} ")
