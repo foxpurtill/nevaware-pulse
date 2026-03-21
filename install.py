@@ -79,6 +79,16 @@ DEPENDENCIES = [
     "google-auth-httplib2", "google-api-python-client",
 ]
 
+# pip package name → importable module name (where they differ)
+PIP_TO_IMPORT = {
+    "Pillow":                    "PIL",
+    "pywin32":                   "win32api",
+    "google-auth":               "google.auth",
+    "google-auth-oauthlib":      "google_auth_oauthlib",
+    "google-auth-httplib2":      "google_auth_httplib2",
+    "google-api-python-client":  "googleapiclient",
+}
+
 # ── Default install path ─────────────────────────────────────────────────────
 DEFAULT_INSTALL = Path("C:/FoxPur-Studios/NeveWare-Pulse")
 
@@ -136,11 +146,20 @@ def step_location(silent):
     return target
 
 # ── Step 3: Dependencies ─────────────────────────────────────────────────────
+def _is_installed(pkg: str) -> bool:
+    """Check if a package is importable without calling pip (instant, no subprocess)."""
+    import importlib.util
+    module = PIP_TO_IMPORT.get(pkg, pkg.replace("-", "_").replace(".", "_"))
+    return importlib.util.find_spec(module) is not None
+
 def step_deps():
     section("Step 3 — Python dependencies")
-    info("Note: some packages (pywin32, keyboard) require Administrator to install correctly.")
-    info("If anything hangs, Ctrl+C and re-run as Administrator.\n")
+    info("Checking installed packages first — only calls pip for missing ones.")
+    info("If pip hangs, Ctrl+C and re-run as Administrator.\n")
     for pkg in DEPENDENCIES:
+        if _is_installed(pkg):
+            ok(f"{pkg} — already installed")
+            continue
         print(f"     Installing {pkg}...", end="", flush=True)
         try:
             result = subprocess.run(
