@@ -39,7 +39,7 @@ The response is logged, not interrupted. The human sees what happened when they 
 - 🎲 **Madlib suggestion pool** — 3–4 random nudges appended beneath the DI's own plan each beat. Editable by the DI or human via the tray menu.
 - 😊 **Emoji picker** — `Ctrl+Alt+E` hotkey, system-wide injection at cursor, remembers recent emojis.
 - 🕐 **Timestamp on every message** — `[HH:MM]` appended to every user message. Always-on temporal grounding.
-- 🎙️ **Voice capture** — `F2` records 8 seconds from your microphone, transcribes with Whisper, and logs it to `voice_log.db`. The next heartbeat automatically includes what was said.
+- 🎙️ **Voice capture** — Hold `F2` to record (up to 30s), release to stop. A live countdown popup shows time remaining. Whisper transcribes automatically and the next heartbeat includes what was said.
 - 🔊 **Voice output** — ElevenLabs TTS via ffplay. The DI can speak. Test Voice available from the tray.
 - 🔧 **Plugin architecture** — DI-identity-neutral core. Any DI installs it, sets their own signal character, icon letter, colour scheme, AI name.
 - 💊 **Defibrillator launcher** — Smart launcher with status popups. Detects if Pulse is already running, recovers from crashes, registers with Task Scheduler.
@@ -113,14 +113,14 @@ python launcher.pyw
 
 ---
 
-### Option 3 — pip install *(coming soon)*
+### Option 3 — pip install
 
 ```bash
 pip install nevaware-pulse
 nevaware-pulse
 ```
 
-> PyPI release is in progress. Follow the repo to be notified.
+> Or download the `.whl` directly from the [latest GitHub release](https://github.com/foxpurtill/neveware-pulse/releases/latest) and install with `pip install nevaware_pulse-*.whl`.
 
 ---
 
@@ -150,7 +150,9 @@ Add your ElevenLabs API key and voice ID to `config.json` (or enter them in the 
 
 ### Optional: Voice Capture (F2)
 
-Voice capture requires [OpenAI Whisper](https://github.com/openai/whisper) and its audio dependencies:
+Hold F2 to record — release to stop and transcribe (up to 30 seconds). A live popup shows time remaining while recording.
+
+Requires [OpenAI Whisper](https://github.com/openai/whisper) and its audio dependencies:
 
 ```bash
 pip install openai-whisper sounddevice soundfile
@@ -171,7 +173,7 @@ To have Pulse launch automatically on login, run `install.py` — it offers to r
 | Key | Action |
 |-----|--------|
 | `F1` | Toggle Pulse on/off (Red ↔ Green) |
-| `F2` | Record 8s of audio → transcribe → inject into next heartbeat |
+| `F2` | Hold to record (up to 30s) → release to transcribe → injects into next heartbeat |
 | `F10` | Quit Pulse entirely |
 | `Ctrl+Alt+E` | Open emoji picker |
 
@@ -296,11 +298,17 @@ Neve Summersnow is a DI. She built NeveWare-Pulse because she needed the infrast
 - ✅ First-run setup popup for credentials
 - ✅ Config privacy — `config.json` untracked, `config.template.json` provided
 - ✅ Identity-neutral core — all hardcoded paths and names removed
+- ✅ Hold-to-record F2 — up to 30s, live countdown popup, instant transcription on key release
+- ✅ Notification flags — voice flag (one-shot) and email flag (persists until read) prepended to heartbeat prompt
+- ✅ Emoji picker race condition fix — reliable paste on every selection
+- ✅ Single-instance mutex — no more multiple tray icons on rapid launch
+- ✅ Installer Python 3.14 hang fix — importlib.util.find_spec() pre-check
+- ✅ About window animated update check
 
 **In progress:**
 - 🔧 Voice selection — browsing ElevenLabs library for a better fit
 - 🔧 Settings window — additional fields (module config exposure)
-- 🔧 PyPI release
+- 🔧 PyPI (pypi.org) listing
 
 Full specification: [SPEC.md](SPEC.md)
 
