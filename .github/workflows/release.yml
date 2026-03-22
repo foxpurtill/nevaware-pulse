@@ -1,0 +1,103 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_override:
+        description: 'Override version (leave blank to use VERSION file)'
+        required: false
+        default: ''
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write   # create GitHub Releases and tags
+      id-token: write   # PyPI Trusted Publisher (OIDC)
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ -n "${{ github.event.inputs.version_override }}" ]; then
+            VERSION="${{ github.event.inputs.version_override }}"
+          else
+            VERSION=$(cat VERSION | tr -d '[:space:]')
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          echo "Releasing $VERSION"
+
+      - name: Install build tools
+        run: pip install build
+
+      - name: Build wheel
+        run: python -m build --wheel --outdir dist/
+
+      - name: Verify wheel version matches
+        run: |
+          WHEEL=$(ls dist/*.whl)
+          echo "Built: $WHEEL"
+          if echo "$WHEEL" | grep -q "${{ steps.version.outputs.version }}"; then
+            echo "Version matches."
+          else
+            echo "WARNING: wheel version mismatch"
+          fi
+
+      - name: Generate release notes
+        id: notes
+        run: |
+          # Pull from CHANGELOG if it exists, otherwise use git log since last tag
+          if [ -f CHANGELOG.md ]; then
+            echo "Using CHANGELOG.md"
+          else
+            PREV_TAG=$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || echo "")
+            if [ -n "$PREV_TAG" ]; then
+              echo "Changes since $PREV_TAG:" > /tmp/release_notes.md
+              git log --oneline ${PREV_TAG}..HEAD --no-merges \
+                | grep -v '\[skip ci\]' \
+                | sed 's/^/- /' >> /tmp/release_notes.md
+            else
+              echo "Initial release." > /tmp/release_notes.md
+            fi
+          fi
+
+      - name: Create or update Git tag
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          TAG="${{ steps.version.outputs.tag }}"
+          # Delete tag if it already exists (re-release)
+          git tag -d "$TAG" 2>/dev/null || true
+          git push origin ":refs/tags/$TAG" 2>/dev/null || true
+          git tag "$TAG"
+          git push origin "$TAG"
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: NeveWare-Pulse ${{ steps.version.outputs.tag }}
+          body_path: /tmp/release_notes.md
+          files: dist/*.whl
+          make_latest: true
+
+      - name: Publish to PyPI (if token available)
+        if: ${{ secrets.PYPI_API_TOKEN != '' }}
+        env:
+          TWINE_USERNAME: __token__
+          TWINE_PASSWORD: ${{ secrets.PYPI_API_TOKEN }}
+        run: |
+          pip install twine
+          twine upload dist/*.whl --skip-existing
