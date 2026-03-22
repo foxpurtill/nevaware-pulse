@@ -29,3 +29,7 @@ dist/
 build/
 *.egg-info/
 nevaware_pulse/__pycache__/
+  
+# Claude Code internal  
+.claude/  
+CLAUDE_CODE_BRIEF.md 
