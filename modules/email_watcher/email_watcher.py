@@ -26,6 +26,83 @@ CREDENTIALS_FILE = MODULE_DIR / "credentials.json"
 
 SCOPES = ["https://www.googleapis.com/auth/gmail.readonly"]
 
+# ---------------------------------------------------------------------------
+# 1.1.0 — Shared state flag helpers (writes to neveware-pulse/.state.json)
+# ---------------------------------------------------------------------------
+
+_STATE_PATH = MODULE_DIR.parent.parent / ".state.json"
+
+
+def _load_pulse_state() -> dict:
+    try:
+        import json as _j
+        with open(_STATE_PATH, "r", encoding="utf-8") as _f:
+            return _j.load(_f)
+    except Exception:
+        return {"active": True}
+
+
+def _save_pulse_state(state: dict):
+    try:
+        import json as _j
+        with open(_STATE_PATH, "w", encoding="utf-8") as _f:
+            _j.dump(state, _f)
+    except Exception as _e:
+        logger.warning(f"email_watcher: state save failed: {_e}")
+
+
+def _add_email_flag(msg: dict, account_label: str):
+    """Add an email flag to shared state. Stays until Gmail marks it read."""
+    state = _load_pulse_state()
+    flags = state.setdefault("pending_flags", {})
+    email_flags = flags.setdefault("email", [])
+    # Avoid duplicates
+    existing_ids = {f.get("id") for f in email_flags}
+    if msg["id"] not in existing_ids:
+        email_flags.append({
+            "id":      msg["id"],
+            "from":    msg["from"],
+            "subject": msg["subject"],
+            "account": account_label,
+            "ts":      datetime.datetime.now().strftime("%H:%M"),
+        })
+        _save_pulse_state(state)
+
+
+def _clear_read_email_flags(service, account_label: str):
+    """Remove any flagged emails that have been read in Gmail."""
+    state = _load_pulse_state()
+    flags = state.get("pending_flags", {})
+    email_flags = flags.get("email", [])
+    if not email_flags:
+        return
+    to_clear = [f for f in email_flags if f.get("account") == account_label]
+    if not to_clear:
+        return
+    remaining = []
+    changed = False
+    for flag in email_flags:
+        if flag.get("account") != account_label:
+            remaining.append(flag)
+            continue
+        try:
+            detail = service.users().messages().get(
+                userId="me", id=flag["id"], format="minimal"
+            ).execute()
+            label_ids = detail.get("labelIds", [])
+            if "UNREAD" in label_ids:
+                remaining.append(flag)  # still unread — keep
+            else:
+                changed = True  # read — drop
+        except Exception:
+            remaining.append(flag)  # on error, keep
+    if changed:
+        state["pending_flags"]["email"] = remaining
+        _save_pulse_state(state)
+
+
+
+
 # ----------------------------------------------------------------------------
 # Google API helpers
 # ----------------------------------------------------------------------------
@@ -254,11 +331,16 @@ class EmailWatcher:
 
                 for m in messages:
                     new_all.append(m)
+                    # 1.1.0 — save email flag for next § prompt
+                    _add_email_flag(m, label)
                     if self.config.get("notify_on_new_mail", True):
                         _fire_toast(
                             title=f"New mail ({label})",
                             message=f"{m['from'][:40]}\n{m['subject'][:60]}"
                         )
+
+                # 1.1.0 — clear flags for messages that have been read in Gmail
+                _clear_read_email_flags(svc, label)
 
             if new_all:
                 with self._lock:

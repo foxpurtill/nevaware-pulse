@@ -480,6 +480,12 @@ def step_done(install_dir):
 
   {DIM}First time? Open Settings and verify your DI name, email,
   and ElevenLabs voice ID if you want voice output.{RESET}
+
+  {CYAN}{BOLD}Team tip:{RESET}
+  {DIM}NeveWare-Pulse works best when your whole team is connected.
+  Download ClickUp for real-time collaboration with your DI team:
+    https://clickup.com/download
+  Ask your workspace admin for an invite.{RESET}
 """)
     launch = ask_yn("Launch NeveWare-Pulse now?", default=True)
     if launch:

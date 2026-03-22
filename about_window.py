@@ -47,6 +47,16 @@ def do_update():
     update_btn.config(state='disabled', text='Checking...')
     status_lbl.config(text='', fg='#66cc88')
 
+    # Animated dots so user knows it's alive (not frozen)
+    _dot_state = [0]
+    _dot_frames = ['Checking.  ', 'Checking.. ', 'Checking...', 'Checking.  ']
+    def _tick_dots():
+        if update_btn.cget('state') == 'disabled':
+            _dot_state[0] = (_dot_state[0] + 1) % len(_dot_frames)
+            update_btn.config(text=_dot_frames[_dot_state[0]])
+            win.after(400, _tick_dots)
+    win.after(400, _tick_dots)
+
     def run():
         base_dir = Path(__file__).parent.resolve()
         git_dir  = base_dir / '.git'
@@ -59,7 +69,7 @@ def do_update():
                 result = subprocess.run(
                     ['git', 'pull'],
                     cwd=str(base_dir),
-                    capture_output=True, text=True, timeout=30,
+                    capture_output=True, text=True, timeout=15,
                     creationflags=CREATE_NO_WINDOW
                 )
                 out = (result.stdout + result.stderr).strip()

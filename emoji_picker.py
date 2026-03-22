@@ -103,13 +103,21 @@ class EmojiPicker:
         selected = {"emoji": None}
 
         def pick(emoji):
+            # Unbind FocusOut first — prevents double-destroy race on Windows
+            # (clicking a button briefly steals focus from root, firing FocusOut
+            # before the button command fires, which destroys root with emoji=None)
+            try:
+                root.unbind("<FocusOut>")
+            except Exception:
+                pass
             selected["emoji"] = emoji
             # Update recent list
             if emoji in recent:
                 recent.remove(emoji)
             recent.insert(0, emoji)
             self.save_recent(recent[:MAX_RECENT])
-            root.destroy()
+            # Use after(50) so click event fully processes before destroy
+            root.after(50, root.destroy)
 
         def on_close():
             root.destroy()
@@ -171,9 +179,11 @@ class EmojiPicker:
     def _inject_emoji(self, emoji: str):
         """Inject emoji at cursor position using clipboard paste."""
         try:
+            # Wait for the previous window to regain focus after picker closes
+            time.sleep(0.35)
             previous = pyperclip.paste()
             pyperclip.copy(emoji)
-            time.sleep(0.1)
+            time.sleep(0.05)
             pyautogui.hotkey("ctrl", "v")
             time.sleep(0.15)
             pyperclip.copy(previous)

@@ -1384,98 +1384,164 @@ class PulseApp:
 
 
     def _listen_worker(self):
-
-        import subprocess
-
-        import os
-
-        import sys as _sys
-
+        """
+        Hold-to-record: streams mic while F2 held (up to 30s max).
+        Live countdown popup open for the duration; closes on F2 release.
+        """
+        import subprocess, os, time, ctypes, tempfile, datetime as _dt
         from pathlib import Path
 
-
+        VK_F2    = 0x71
+        MAX_SECS = self.config.get("listen_max_duration_seconds", 30)
+        MIN_SECS = 0.5    # accidental-tap guard
 
         self._listen_active = True
 
-        duration = self.config.get("listen_duration_seconds", 8)
-
-
-
-        # Resolve python.exe (not pythonw.exe) so sounddevice/whisper imports work
-
-        python_exe = _(sys.executable if "pythonw" in sys.executable else sys.executable.replace("python.exe", "pythonw.exe"))
-
-
-
-        # Resolve listen.py relative to the user's home, or config override
-
         neve_dir = Path(
-
             self.config.get("neve_dir", "")
-
             or Path.home() / "Documents" / "Neve"
+        )
+        listen_script = str(neve_dir / "listen.py")
+        python_exe    = sys.executable
 
+        tmp_dir    = tempfile.gettempdir()
+        stop_file  = os.path.join(tmp_dir, "pulse_listen_stop.tmp")
+        close_file = os.path.join(tmp_dir, "pulse_popup_close.tmp")
+
+        for f in (stop_file, close_file):
+            if os.path.exists(f):
+                try: os.remove(f)
+                except OSError: pass
+
+        # Open live countdown popup
+        self._show_recording_popup(MAX_SECS, close_file)
+
+        proc = subprocess.Popen(
+            [python_exe, listen_script,
+             "--max-duration", str(MAX_SECS),
+             "--stop-file",    stop_file],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
         )
 
-        listen_script = str(neve_dir / "listen.py")
-
-
+        start = time.time()
 
         try:
+            while proc.poll() is None:
+                elapsed = time.time() - start
 
-            self._show_listen_toast("recording", duration)
+                # F2 released after minimum hold → signal stop + close popup
+                if elapsed >= MIN_SECS:
+                    if not (ctypes.windll.user32.GetAsyncKeyState(VK_F2) & 0x8000):
+                        for f in (stop_file, close_file):
+                            if not os.path.exists(f):
+                                try: open(f, "w").close()
+                                except OSError: pass
 
+                time.sleep(0.05)
 
+            stdout, stderr = proc.communicate(timeout=10)
+            transcript = stdout.decode("utf-8", errors="replace").strip()
+            transcript = " ".join(
+                l for l in transcript.splitlines()
+                if not l.startswith("[listen]")
+            ).strip()
 
-            result = subprocess.run(
-
-                [python_exe, listen_script, "--duration", str(duration)],
-
-                capture_output=True,
-
-                timeout=duration + 60
-
-            )
-
-
-
-            if result.returncode != 0:
-
-                err = (result.stderr or result.stdout or b"unknown error").decode("utf-8", errors="replace").strip()
-
+            if proc.returncode != 0 or not transcript:
+                err = stderr.decode("utf-8", errors="replace").strip()
                 logger.warning(f"F2 listen script failed: {err}")
-
-                self._show_listen_toast("error", duration, err[:80])
-
+                self._show_listen_toast("error", MAX_SECS, err[:80])
                 return
 
-
-
-            transcript = result.stdout.decode("utf-8", errors="replace").strip()
-
             logger.info(f"F2 voice captured: {transcript}")
+            self._show_listen_toast("done", MAX_SECS, transcript)
 
-            self._show_listen_toast("done", duration, transcript)
-
-
+            # Save voice flag for next § prompt
+            try:
+                _vst = load_state()
+                _vst.setdefault("pending_flags", {})["voice"] = {
+                    "transcript": transcript,
+                    "ts": _dt.datetime.now().strftime("%H:%M"),
+                }
+                save_state(_vst)
+                logger.info("F2: voice flag saved — next § will notify Neve.")
+            except Exception as _vfe:
+                logger.warning(f"F2: voice flag save failed: {_vfe}")
 
         except subprocess.TimeoutExpired:
-
             logger.warning("F2 listen timed out")
-
-            self._show_listen_toast("error", duration, "Timed out")
+            proc.kill()
+            self._show_listen_toast("error", MAX_SECS, "Timed out")
 
         except Exception as e:
-
             logger.warning(f"F2 listen failed: {e}")
-
             self._show_listen_toast("error", 0, str(e))
 
         finally:
-
             self._listen_active = False
+            for f in (stop_file, close_file):
+                if os.path.exists(f):
+                    try: os.remove(f)
+                    except OSError: pass
 
+    def _show_recording_popup(self, max_seconds: int, close_file: str):
+        """
+        Spawn a live countdown popup while F2 is held.
+        Shows 'Recording — you have N seconds left.'
+        Closes when close_file appears (F2 released) or countdown reaches 0.
+        """
+        import subprocess, sys, tempfile
 
+        script = (
+            "import tkinter as tk, os, time, threading\n"
+            f"close_file = {repr(close_file)}\n"
+            f"remaining  = [{max_seconds}]\n"
+            "root = tk.Tk()\n"
+            "root.title('NeveWare Recording')\n"
+            "root.overrideredirect(True)\n"
+            "root.attributes('-topmost', True)\n"
+            "root.attributes('-alpha', 0.95)\n"
+            "root.configure(bg='#0a1a2a')\n"
+            "tk.Label(root, text='  ⏺  Recording', font=('Segoe UI', 10, 'bold'),\n"
+            "         bg='#0a1a2a', fg='#66aaff', padx=14, pady=8).pack(anchor='w')\n"
+            "lbl = tk.Label(root, text=f'You have {remaining[0]}s left.',\n"
+            "               font=('Segoe UI', 11), bg='#0a1a2a', fg='#ccccee',\n"
+            "               padx=14, pady=4)\n"
+            "lbl.pack(anchor='w')\n"
+            "def tick():\n"
+            "    if os.path.exists(close_file):\n"
+            "        try: os.remove(close_file)\n"
+            "        except: pass\n"
+            "        root.destroy(); return\n"
+            "    remaining[0] -= 1\n"
+            "    if remaining[0] <= 0:\n"
+            "        root.destroy(); return\n"
+            "    lbl.config(text=f'You have {remaining[0]}s left.')\n"
+            "    root.after(1000, tick)\n"
+            "def poll_close():\n"
+            "    if os.path.exists(close_file):\n"
+            "        try: os.remove(close_file)\n"
+            "        except: pass\n"
+            "        root.destroy(); return\n"
+            "    root.after(100, poll_close)\n"
+            "root.update_idletasks()\n"
+            "sw = root.winfo_screenwidth()\n"
+            "sh = root.winfo_screenheight()\n"
+            "root.geometry(f'+{sw//2 - root.winfo_reqwidth()//2}+{sh//2 - root.winfo_reqheight()//2}')\n"
+            "root.after(1000, tick)\n"
+            "root.after(100, poll_close)\n"
+            "root.mainloop()\n"
+        )
+
+        try:
+            tmp = tempfile.NamedTemporaryFile(mode="w", suffix=".py",
+                                              delete=False, encoding="utf-8")
+            tmp.write(script)
+            tmp.close()
+            subprocess.Popen([sys.executable, tmp.name],
+                             creationflags=0x08000000)
+        except Exception as e:
+            logger.warning(f"recording popup failed: {e}")
 
     def _show_listen_toast(self, state: str, duration: float, text: str = ""):
 
@@ -2044,13 +2110,9 @@ root.mainloop()
 
 
 
-        # Singleton mutex — prevents duplicate instances more reliably than PID files.
-        # Held for the lifetime of this process; auto-released on exit by the OS.
-        try:
-            import ctypes as _ct
-            self._mutex = _ct.windll.kernel32.CreateMutexW(None, True, "Global\\NeveWare-Pulse")
-        except Exception:
-            self._mutex = None
+        # Singleton mutex is now created at __main__ entry (before app init)
+        # to close the race window with the launcher. Nothing to do here.
+        self._mutex = None  # reference kept for clarity; actual handle in __main__
 
         # Write PID file so the Defibrillator can detect us instantly
 
@@ -2168,6 +2230,17 @@ root.mainloop()
 # ---------------------------------------------------------------------------
 
 if __name__ == "__main__":
+
+    # ── Singleton guard (must be first — closes the launcher race window) ──
+    # Create the mutex before any app setup so the launcher's is_pulse_running()
+    # check is never racing against Python startup time. If already held by
+    # another instance, exit silently — the launcher will show the red popup.
+    import ctypes as _ct_sg
+    _sg_mutex = _ct_sg.windll.kernel32.CreateMutexW(None, True, "Global\\NeveWare-Pulse")
+    if _ct_sg.windll.kernel32.GetLastError() == 183:  # ERROR_ALREADY_EXISTS
+        _ct_sg.windll.kernel32.CloseHandle(_sg_mutex)
+        sys.exit(0)
+    # _sg_mutex stays open for the process lifetime — OS releases it on exit.
 
     app = PulseApp()
 

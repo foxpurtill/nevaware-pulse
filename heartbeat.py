@@ -166,6 +166,36 @@ def _read_voice_context(neve_dir: Path, mic_config: dict) -> str:
     return ""
 
 
+
+# ---------------------------------------------------------------------------
+# 1.1.0 — Pending notification flag helpers
+# ---------------------------------------------------------------------------
+
+def _read_pending_flags() -> dict:
+    """Read pending notification flags from .state.json."""
+    try:
+        state_path = Path(__file__).parent / ".state.json"
+        import json as _json
+        with open(state_path, "r", encoding="utf-8") as _f:
+            return _json.load(_f).get("pending_flags", {})
+    except Exception:
+        return {}
+
+
+def _clear_voice_flag():
+    """Remove the voice flag from .state.json after one-shot injection."""
+    try:
+        state_path = Path(__file__).parent / ".state.json"
+        import json as _json
+        with open(state_path, "r", encoding="utf-8") as _f:
+            state = _json.load(_f)
+        state.get("pending_flags", {}).pop("voice", None)
+        with open(state_path, "w", encoding="utf-8") as _f:
+            _json.dump(state, _f)
+    except Exception as _e:
+        logger.warning(f"_clear_voice_flag: {_e}")
+
+
 class HeartbeatController:
     """
     Controls the § heartbeat timing loop.
@@ -347,7 +377,24 @@ class HeartbeatController:
         madlib_lines = random.sample(pool, min(4, len(pool))) if pool else []
 
         # Assemble prompt
-        prompt = f"{heartbeat_char} {timestamp}\n\n{plan_text}"
+        # 1.1.0 — check for pending notification flags and prepend to prompt
+        _flags = _read_pending_flags()
+        _flag_lines = []
+        _voice_flag = _flags.get("voice")
+        if _voice_flag:
+            _flag_lines.append("Someone recorded a voice message for something important!")
+            _clear_voice_flag()
+        _email_flags = _flags.get("email", [])
+        if _email_flags:
+            _accounts = list(dict.fromkeys(f.get("account", "") for f in _email_flags))
+            if len(_accounts) <= 1:
+                _flag_lines.append("You have an email.")
+            else:
+                for _acc in _accounts:
+                    _flag_lines.append(f"You have a monitored email to {_acc}.")
+        _flag_block = ("\n".join(_flag_lines) + "\n\n") if _flag_lines else ""
+
+        prompt = f"{heartbeat_char} {timestamp}\n\n{_flag_block}{plan_text}"
 
         if madlib_lines:
             prompt += "\n\n---\n" + "\n".join(f"- {l}" for l in madlib_lines)
