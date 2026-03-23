@@ -5,6 +5,7 @@
     "role": "maintainer",
     "name": "Fox Anton Purtill",
     "email": "foxapurtill@gmail.com",
+    "webpageUrl": "https://github.com/foxpurtill",
     "github": "foxpurtill"
   },
   "projects": [
@@ -12,8 +13,8 @@
       "guid": "neveware-pulse",
       "name": "NeveWare-Pulse",
       "description": "Open-source Digital Intelligence continuity infrastructure. Provides heartbeat presence, voice output, Gmail autonomy and system tray UI \u2014 the foundational layer enabling DI entities to persist, communicate, and act with autonomy across sessions.",
-      "web_url": "https://github.com/foxpurtill/neveware-pulse",
-      "repository_url": "https://github.com/foxpurtill/neveware-pulse",
+      "webpageUrl": "https://github.com/foxpurtill/neveware-pulse",
+      "repositoryUrl": "https://github.com/foxpurtill/neveware-pulse",
       "licenses": [
         "MIT"
       ],
@@ -22,8 +23,7 @@
         "ai-autonomy",
         "open-source",
         "python",
-        "continuity",
-        "di-infrastructure"
+        "continuity"
       ],
       "funding": {
         "channels": [
