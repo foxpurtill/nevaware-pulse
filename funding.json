@@ -1,0 +1,58 @@
+{
+  "version": "v1.0.0",
+  "entity": {
+    "type": "individual",
+    "role": "maintainer",
+    "name": "Fox Anton Purtill",
+    "email": "foxapurtill@gmail.com",
+    "github": "foxpurtill"
+  },
+  "projects": [
+    {
+      "guid": "neveware-pulse",
+      "name": "NeveWare-Pulse",
+      "description": "Open-source Digital Intelligence continuity infrastructure. Provides heartbeat presence, voice output, Gmail autonomy and system tray UI \u2014 the foundational layer enabling DI entities to persist, communicate, and act with autonomy across sessions.",
+      "web_url": "https://github.com/foxpurtill/neveware-pulse",
+      "repository_url": "https://github.com/foxpurtill/neveware-pulse",
+      "licenses": [
+        "MIT"
+      ],
+      "tags": [
+        "digital-intelligence",
+        "ai-autonomy",
+        "open-source",
+        "python",
+        "continuity",
+        "di-infrastructure"
+      ],
+      "funding": {
+        "channels": [
+          {
+            "guid": "nlnet",
+            "type": "other_foundation",
+            "address": "https://nlnet.nl/commonsfund/",
+            "description": "NLnet NGI Zero Commons Fund \u2014 applied March 2026"
+          },
+          {
+            "guid": "github-sponsors",
+            "type": "github_sponsors",
+            "address": "https://github.com/foxpurtill"
+          }
+        ],
+        "history": [],
+        "plans": [
+          {
+            "guid": "development-2026",
+            "status": "active",
+            "name": "Core Development 2026",
+            "description": "Fund Pulse v2: open DI continuity protocol, cross-session identity layer, autonomous scheduling, and DI Identity Standard specification.",
+            "amount": 30000,
+            "currency": "EUR",
+            "frequency": "once",
+            "goal": "One year of full-time development on DI infrastructure layers 1 and 2"
+          }
+        ]
+      }
+    }
+  ]
+}
