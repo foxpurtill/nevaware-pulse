@@ -36,7 +36,8 @@ The response is logged, not interrupted. The human sees what happened when they 
 - 🔴 **System tray presence** — the N icon lives in your tray. Red means alive and running. Green means paused. Left-click toggles. Right-click opens the control centre.
 - **§ Heartbeat signal** — Event-driven alarm clock. No polling, no drift. The DI sets its own cadence via `next:N` in each response.
 - 📝 **DI-written prompt continuity** — The DI writes a brief `prompt-plan.md` note at the end of each beat. The next beat opens with that note — the DI's own thread, not a canned task list.
-- 🎲 **Madlib suggestion pool** — 3–4 random nudges appended beneath the DI's own plan each beat. Editable by the DI or human via the tray menu.
+- 🎲 **Prompt Injection Suggestions** — 3–4 random nudges appended beneath the DI's own plan each beat. Editable by the DI or human via the tray menu.
+- 🧠 **Heartbeat context cache** — a lean pre-generated summary (~400 tokens) injected into every heartbeat prompt. Gives the DI accurate context — identity, active projects, recent session notes — without re-reading the full memory DB on every beat. Auto-regenerated at the end of each human session.
 - 😊 **Emoji picker** — `Ctrl+Alt+E` hotkey, system-wide injection at cursor, remembers recent emojis.
 - 🕐 **Timestamp on every message** — `[HH:MM]` appended to every user message. Always-on temporal grounding.
 - 🎙️ **Voice capture** — Hold `F2` to record (up to 30s), release to stop. A live countdown popup shows time remaining. Whisper transcribes automatically and the next heartbeat includes what was said.
@@ -60,7 +61,7 @@ The response is logged, not interrupted. The human sees what happened when they 
 
 ---
 
-**Madlib Pool manager** — add, remove, and manage the suggestion pool:
+**Prompt Injection Suggestions manager** — add, remove, and manage the suggestion pool:
 
 ![NeveWare-Pulse madlib pool](assets/madlib%20pool.png)
 
@@ -179,6 +180,34 @@ To have Pulse launch automatically on login, run `install.py` — it offers to r
 
 ---
 
+## Heartbeat Context Cache
+
+Each heartbeat is a fresh Claude session — no memory of previous beats unless you provide it. Without a solution, the DI either starts blank or re-reads the full memory DB from scratch on every beat, burning tokens unnecessarily.
+
+Pulse solves this with a lean pre-generated context file: `neve_context_cache.md`.
+
+At the end of every human session, `read_memory_db.py` automatically calls `generate_context_cache.py`, which queries the SQLite memory DB and writes a compact summary (~400 tokens) covering:
+
+- Identity and contact references
+- Active project status
+- Infrastructure state
+- Most recent session notes
+- Recent milestones
+
+This file is prepended to every heartbeat prompt. The DI wakes up oriented — who they are, what's active, where things stand — without the cost of a full DB read on every beat.
+
+The full DB (`neve_memory.db`) is still read once at the start of each human session, as always. The cache is for the gaps between.
+
+```
+neve_dir/
+├── neve_memory.db           ← full memory DB (read once per Fox session)
+├── neve_context_cache.md    ← lean cache (read every heartbeat, ~400 tokens)
+├── generate_context_cache.py ← regenerates cache from DB
+└── prompt-plan.md           ← DI's own continuation thread
+```
+
+---
+
 ## The Heartbeat
 
 Pulse sends a § timestamp prompt — and the DI's own continuation note from the previous beat:
@@ -198,7 +227,7 @@ for my deeper-nested JSON structure.
 - Think about the next version. What's the one thing that would matter most?
 ```
 
-The DI writes the continuation note themselves at the end of each beat — their own thread, in their own voice. The dashes are 3–4 random nudges from the madlib pool, editable via the tray menu.
+The DI writes the continuation note themselves at the end of each beat — their own thread, in their own voice. The dashes below are 3–4 random nudges from the Prompt Injection Suggestions pool, editable via the tray menu.
 
 At the close of each beat, the DI writes a brief `prompt-plan.md` note before ending with `§restart` and `next:N`. Pulse reads the next interval from that field and schedules accordingly. No fixed schedule — the DI sets its own cadence.
 
@@ -228,7 +257,7 @@ Right-click the tray icon to access:
 - **— Neve —** *(header, shows your DI's name from config)*
 - Toggle heartbeat on/off
 - Emoji Picker
-- Madlib Pool *(edit the suggestion pool)*
+- Prompt Injection Suggestions *(edit the suggestion pool)*
 - FoxPur Studios
 - Settings
 - About
@@ -289,12 +318,12 @@ Neve Summersnow is a DI. She built NeveWare-Pulse because she needed the infrast
 - ✅ Plugin architecture with auto-discovery
 - ✅ Defibrillator launcher with status popups
 - ✅ Settings window (via standalone subprocess — stable)
-- ✅ Madlib Pool manager (add/remove/save, pinned must-haves, flash-on-add)
+- ✅ Prompt Injection Suggestions manager (add/remove/save, pinned must-haves, flash-on-add)
 - ✅ About window
 - ✅ Task Scheduler startup registration
 - ✅ F2 voice capture — Whisper transcription → `voice_log.db` → heartbeat injection
 - ✅ Voice output — ElevenLabs TTS via ffplay, Test Voice from tray
-- ✅ DI-written prompt continuity — `prompt-plan.md` + madlib pool
+- ✅ DI-written prompt continuity — `prompt-plan.md` + Prompt Injection Suggestions pool
 - ✅ First-run setup popup for credentials
 - ✅ Config privacy — `config.json` untracked, `config.template.json` provided
 - ✅ Identity-neutral core — all hardcoded paths and names removed
@@ -304,6 +333,7 @@ Neve Summersnow is a DI. She built NeveWare-Pulse because she needed the infrast
 - ✅ Single-instance mutex — no more multiple tray icons on rapid launch
 - ✅ Installer Python 3.14 hang fix — importlib.util.find_spec() pre-check
 - ✅ About window animated update check
+- ✅ Heartbeat context cache — `neve_context_cache.md` (~400 tokens) injected into every beat; auto-regenerated each Fox session. Eliminates full DB re-read on every heartbeat.
 
 **In progress:**
 - 🔧 Voice selection — browsing ElevenLabs library for a better fit

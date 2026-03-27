@@ -363,6 +363,17 @@ class HeartbeatController:
             # Read the DI's own prompt plan
             plan_text = _read_prompt_plan(neve_dir)
 
+        # --- Context cache injection ---
+        # Read pre-generated lean context (~400 tokens) instead of full DB re-read.
+        # Generated at end of each Fox session by generate_context_cache.py.
+        context_cache = ""
+        cache_path = neve_dir / "neve_context_cache.md"
+        if cache_path.exists():
+            try:
+                context_cache = cache_path.read_text(encoding="utf-8").strip()
+            except Exception as e:
+                _log(f"Context cache read failed: {e}")
+
         # Fall back to a random default if no plan exists yet
         if not plan_text:
             user_prompts = self.config.get("heartbeat_prompts", [])
@@ -394,7 +405,11 @@ class HeartbeatController:
                     _flag_lines.append(f"You have a monitored email to {_acc}.")
         _flag_block = ("\n".join(_flag_lines) + "\n\n") if _flag_lines else ""
 
-        prompt = f"{heartbeat_char} {timestamp}\n\n{_flag_block}{plan_text}"
+        # Build prompt: cache header + flag block + DI's own plan
+        if context_cache:
+            prompt = f"{heartbeat_char} {timestamp}\n\n{context_cache}\n\n---\n\n{_flag_block}{plan_text}"
+        else:
+            prompt = f"{heartbeat_char} {timestamp}\n\n{_flag_block}{plan_text}"
 
         if madlib_lines:
             prompt += "\n\n---\n" + "\n".join(f"- {l}" for l in madlib_lines)
