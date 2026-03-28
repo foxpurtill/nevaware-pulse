@@ -20,7 +20,7 @@ logger = logging.getLogger(__name__)
 KEYSTROKE_DELAY = 0.05
 
 # How long to wait for the new Claude tab to load before injecting
-NEW_TAB_WAIT = 4.0
+NEW_TAB_WAIT = 6.0
 
 # URL to open for each heartbeat session
 CLAUDE_NEW_URL = "https://claude.ai/new"
@@ -50,28 +50,44 @@ def _open_new_claude_tab() -> bool:
 def _find_newest_claude_window() -> int | None:
     """
     Find the most recently created Claude window.
-    Collects all matching windows and returns the last one found,
-    which is most likely the freshly opened tab.
+    Prefers browser windows (Chrome/Edge/Firefox with claude.ai)
+    over the Claude desktop app to ensure fresh tab targeting.
     """
-    found = []
+    browser_windows = []
+    claude_app_windows = []
+
+    BROWSER_PATTERNS = ["Chrome", "Edge", "Firefox", "Brave", "Opera"]
 
     def callback(hwnd, _):
         if not win32gui.IsWindowVisible(hwnd):
             return True
         title = win32gui.GetWindowText(hwnd)
-        for pattern in CLAUDE_TITLE_PATTERNS:
-            if pattern in title:
-                found.append(hwnd)
-                return True
+        if not title:
+            return True
+
+        is_claude = any(p in title for p in CLAUDE_TITLE_PATTERNS)
+        if not is_claude:
+            return True
+
+        is_browser = any(b in title for b in BROWSER_PATTERNS)
+        if is_browser:
+            browser_windows.append(hwnd)
+        else:
+            claude_app_windows.append(hwnd)
         return True
 
     win32gui.EnumWindows(callback, None)
 
-    if found:
-        titles = [win32gui.GetWindowText(h) for h in found]
-        logger.debug(f"Found Claude windows: {titles}")
-        # Return the last found — most recently opened
-        return found[-1]
+    # Prefer browser window (our fresh tab) over desktop app
+    if browser_windows:
+        titles = [win32gui.GetWindowText(h) for h in browser_windows]
+        logger.debug(f"Found browser Claude windows: {titles}")
+        return browser_windows[-1]
+
+    if claude_app_windows:
+        titles = [win32gui.GetWindowText(h) for h in claude_app_windows]
+        logger.debug(f"Found Claude app windows: {titles}")
+        return claude_app_windows[-1]
 
     logger.warning("No Claude window found.")
     return None
