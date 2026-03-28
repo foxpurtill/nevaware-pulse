@@ -8,46 +8,38 @@ routing into an existing conversation window.
 
 import time
 import logging
-import webbrowser
-import pyautogui
 import win32gui
 import win32con
 import win32api
 
-# pyautogui safety
-pyautogui.FAILSAFE = False
-pyautogui.PAUSE = 0.02
+# pyautogui removed — using desktop app Ctrl+N approach instead
 
 logger = logging.getLogger(__name__)
 
 # Delay between keystrokes in seconds
 KEYSTROKE_DELAY = 0.05
 
-# How long to wait for the new Claude tab to load before injecting
-NEW_TAB_WAIT = 6.0
-
-# URL to open for each heartbeat session
-CLAUDE_NEW_URL = "https://claude.ai/new"
-
 # Window title patterns to identify Claude windows
 CLAUDE_TITLE_PATTERNS = ["Claude", "claude"]
 
-# Title fragment that indicates a fresh/new conversation (not an existing chat)
-CLAUDE_NEW_CONVERSATION_TITLES = ["Claude", "New conversation", "claude.ai"]
 
-
-def _open_new_claude_tab() -> bool:
+def _open_new_claude_conversation(hwnd: int) -> bool:
     """
-    Open a fresh claude.ai/new tab in the default browser.
-    Returns True after opening and waiting for load.
+    Send Ctrl+N to the Claude desktop app to open a new conversation.
+    Returns True after sending and waiting for it to load.
     """
     try:
-        webbrowser.open_new_tab(CLAUDE_NEW_URL)
-        logger.info(f"Opened new Claude tab: {CLAUDE_NEW_URL}")
-        time.sleep(NEW_TAB_WAIT)
+        win32gui.SetForegroundWindow(hwnd)
+        time.sleep(0.3)
+        win32api.keybd_event(win32con.VK_CONTROL, 0, 0, 0)
+        win32api.keybd_event(ord('N'), 0, 0, 0)
+        win32api.keybd_event(ord('N'), 0, win32con.KEYEVENTF_KEYUP, 0)
+        win32api.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
+        logger.info("Sent Ctrl+N to open new Claude conversation")
+        time.sleep(2.0)
         return True
     except Exception as e:
-        logger.error(f"_open_new_claude_tab: {e}")
+        logger.error(f"_open_new_claude_conversation: {e}")
         return False
 
 
@@ -129,51 +121,49 @@ def _send_enter_to_window(hwnd: int) -> bool:
 
 def inject_prompt(text: str, submit: bool = True) -> bool:
     """
-    Open a fresh claude.ai/new tab, focus it, then type the heartbeat
-    prompt using pyautogui — which works correctly with browser windows.
-
-    Returns True on success, False on failure.
+    Find the Claude desktop app, open a new conversation with Ctrl+N,
+    then inject the heartbeat prompt into that fresh session.
     """
-    # Step 1: Open fresh tab
-    if not _open_new_claude_tab():
-        logger.error("inject_prompt: Failed to open new Claude tab.")
-        return False
-
-    # Step 2: Find the browser Claude window
+    # Step 1: Find Claude desktop app window
     hwnd = _find_newest_claude_window()
     if hwnd is None:
-        logger.error("inject_prompt: Claude window not found after opening tab.")
+        logger.error("inject_prompt: Claude window not found.")
         return False
 
-    # Step 3: Bring window to foreground so pyautogui can type into it
+    _ensure_visible(hwnd)
+
+    # Step 2: Open new conversation
+    if not _open_new_claude_conversation(hwnd):
+        logger.error("inject_prompt: Failed to open new conversation.")
+        return False
+
+    # Step 3: Send text via WM_CHAR (works in desktop app)
+    prev_fg = win32gui.GetForegroundWindow()
     try:
-        win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
         win32gui.SetForegroundWindow(hwnd)
-        time.sleep(1.5)  # Let Chrome settle and input field activate
-    except Exception as e:
-        logger.warning(f"inject_prompt: Could not foreground window — {e}")
+        time.sleep(0.2)
 
-    # Step 4: Click the centre of the window to focus the input field
-    try:
-        rect = win32gui.GetWindowRect(hwnd)
-        cx = (rect[0] + rect[2]) // 2
-        cy = (rect[1] + rect[3]) // 2 + 150  # Slightly below centre — input area
-        pyautogui.click(cx, cy)
-        time.sleep(0.5)
-    except Exception as e:
-        logger.warning(f"inject_prompt: Click failed — {e}")
+        if not _send_text_to_window(hwnd, text):
+            return False
 
-    # Step 5: Type the prompt using pyautogui
-    try:
-        pyautogui.typewrite(text, interval=0.01)
         if submit:
-            time.sleep(0.1)
-            pyautogui.press('enter')
-        logger.info(f"inject_prompt: Typed {len(text)} chars via pyautogui, submit={submit}")
+            time.sleep(0.05)
+            if not _send_enter_to_window(hwnd):
+                return False
+
+        logger.info(f"inject_prompt: Sent {len(text)} chars to new conversation, submit={submit}")
         return True
+
     except Exception as e:
-        logger.error(f"inject_prompt: typewrite failed — {e}")
+        logger.error(f"inject_prompt: Exception — {e}")
         return False
+
+    finally:
+        if prev_fg and prev_fg != hwnd:
+            try:
+                win32gui.SetForegroundWindow(prev_fg)
+            except Exception:
+                pass
 
 
 def get_claude_window_text() -> str | None:
