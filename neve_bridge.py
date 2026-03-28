@@ -1,9 +1,11 @@
 """
 neve_bridge.py — Window interaction layer for NeveWare-Pulse.
 
-Opens a fresh claude.ai/new tab before each heartbeat injection,
-ensuring Pulse always gets its own clean session rather than
-routing into an existing conversation window.
+Injects heartbeat prompts into Claude desktop app conversations.
+Opens a new conversation (Ctrl+N) only when requested — on first beat
+of a session or when the DI signals restart:1 for context overflow.
+Subsequent beats inject into the existing conversation to preserve context
+and avoid redundant memory reads.
 """
 
 import time
@@ -119,10 +121,14 @@ def _send_enter_to_window(hwnd: int) -> bool:
     return True
 
 
-def inject_prompt(text: str, submit: bool = True) -> bool:
+def inject_prompt(text: str, submit: bool = True, new_session: bool = False) -> bool:
     """
-    Find the Claude desktop app, open a new conversation with Ctrl+N,
-    then inject the heartbeat prompt into that fresh session.
+    Find the Claude desktop app and inject the heartbeat prompt.
+
+    new_session=True  → open a fresh Ctrl+N conversation first.
+                        Use on first beat of a run, or when DI signals restart:1.
+    new_session=False → inject into the existing conversation (default).
+                        Keeps session alive across beats, saving memory-read tokens.
     """
     # Step 1: Find Claude desktop app window
     hwnd = _find_newest_claude_window()
@@ -132,10 +138,11 @@ def inject_prompt(text: str, submit: bool = True) -> bool:
 
     _ensure_visible(hwnd)
 
-    # Step 2: Open new conversation
-    if not _open_new_claude_conversation(hwnd):
-        logger.error("inject_prompt: Failed to open new conversation.")
-        return False
+    # Step 2: Open new conversation only when requested
+    if new_session:
+        if not _open_new_claude_conversation(hwnd):
+            logger.error("inject_prompt: Failed to open new conversation.")
+            return False
 
     # Step 3: Send text via WM_CHAR (works in desktop app)
     prev_fg = win32gui.GetForegroundWindow()
@@ -151,7 +158,7 @@ def inject_prompt(text: str, submit: bool = True) -> bool:
             if not _send_enter_to_window(hwnd):
                 return False
 
-        logger.info(f"inject_prompt: Sent {len(text)} chars to new conversation, submit={submit}")
+        logger.info(f"inject_prompt: Sent {len(text)} chars, new_session={new_session}, submit={submit}")
         return True
 
     except Exception as e:
