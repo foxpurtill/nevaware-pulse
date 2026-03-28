@@ -1,35 +1,57 @@
 """
 neve_bridge.py — Window interaction layer for NeveWare-Pulse.
 
-Locates the Claude desktop app window via pywin32 and injects text
-into its input field without stealing focus.
+Opens a fresh claude.ai/new tab before each heartbeat injection,
+ensuring Pulse always gets its own clean session rather than
+routing into an existing conversation window.
 """
 
 import time
 import logging
+import subprocess
+import webbrowser
 import win32gui
 import win32con
 import win32api
-import win32process
-import ctypes
-from ctypes import wintypes
 
 logger = logging.getLogger(__name__)
-
-# Claude desktop app window title patterns (checked in order)
-CLAUDE_TITLE_PATTERNS = [
-    "Claude",
-    "claude",
-]
 
 # Delay between keystrokes in seconds
 KEYSTROKE_DELAY = 0.05
 
+# How long to wait for the new Claude tab to load before injecting
+NEW_TAB_WAIT = 4.0
 
-def _find_claude_window() -> int | None:
+# URL to open for each heartbeat session
+CLAUDE_NEW_URL = "https://claude.ai/new"
+
+# Window title patterns to identify Claude windows
+CLAUDE_TITLE_PATTERNS = ["Claude", "claude"]
+
+# Title fragment that indicates a fresh/new conversation (not an existing chat)
+CLAUDE_NEW_CONVERSATION_TITLES = ["Claude", "New conversation", "claude.ai"]
+
+
+def _open_new_claude_tab() -> bool:
     """
-    Scan all top-level windows for a Claude desktop app window.
-    Returns the HWND if found, None otherwise.
+    Open a fresh claude.ai/new tab in the default browser.
+    Returns True after opening and waiting for load.
+    """
+    try:
+        webbrowser.open_new_tab(CLAUDE_NEW_URL)
+        logger.info(f"Opened new Claude tab: {CLAUDE_NEW_URL}")
+        time.sleep(NEW_TAB_WAIT)
+        return True
+    except Exception as e:
+        logger.error(f"_open_new_claude_tab: {e}")
+        return False
+
+
+def _find_newest_claude_window() -> int | None:
+    """
+    Find the most recently created Claude window.
+    Collects all matching windows and returns the last one found,
+    which is most likely the freshly opened tab.
     """
     found = []
 
@@ -46,32 +68,26 @@ def _find_claude_window() -> int | None:
     win32gui.EnumWindows(callback, None)
 
     if found:
-        logger.debug(f"Found {len(found)} Claude window(s): {[win32gui.GetWindowText(h) for h in found]}")
-        return found[0]
+        titles = [win32gui.GetWindowText(h) for h in found]
+        logger.debug(f"Found Claude windows: {titles}")
+        # Return the last found — most recently opened
+        return found[-1]
 
-    logger.warning("Claude window not found.")
+    logger.warning("No Claude window found.")
     return None
 
 
 def _ensure_visible(hwnd: int) -> bool:
-    """
-    If the window is minimised, restore it.
-    Does not bring it to the foreground — just makes it interactable.
-    Returns True if the window is now in a usable state.
-    """
+    """Restore window if minimised. Does not force foreground."""
     placement = win32gui.GetWindowPlacement(hwnd)
-    show_cmd = placement[1]
-    if show_cmd == win32con.SW_SHOWMINIMIZED:
+    if placement[1] == win32con.SW_SHOWMINIMIZED:
         win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
         time.sleep(0.3)
     return True
 
 
 def _send_text_to_window(hwnd: int, text: str) -> bool:
-    """
-    Post WM_CHAR messages for each character in `text` to the given window.
-    This does not steal focus from the currently active window.
-    """
+    """Post WM_CHAR messages for each character to the window."""
     for char in text:
         code = ord(char)
         win32api.PostMessage(hwnd, win32con.WM_CHAR, code, 0)
@@ -80,14 +96,11 @@ def _send_text_to_window(hwnd: int, text: str) -> bool:
 
 
 def _send_enter_to_window(hwnd: int) -> bool:
-    """
-    Send a Return keystroke (WM_KEYDOWN + WM_KEYUP) to the window.
-    """
+    """Send Return keystroke to the window."""
     vk_return = win32con.VK_RETURN
     scan = win32api.MapVirtualKey(vk_return, 0)
     lparam_down = (scan << 16) | 1
     lparam_up   = (scan << 16) | 0xC0000001
-
     win32api.PostMessage(hwnd, win32con.WM_KEYDOWN, vk_return, lparam_down)
     time.sleep(KEYSTROKE_DELAY)
     win32api.PostMessage(hwnd, win32con.WM_KEYUP,   vk_return, lparam_up)
@@ -96,26 +109,30 @@ def _send_enter_to_window(hwnd: int) -> bool:
 
 def inject_prompt(text: str, submit: bool = True) -> bool:
     """
-    Find the Claude window, inject `text`, and optionally submit with Enter.
+    Open a fresh claude.ai/new tab, then inject the heartbeat prompt into it.
+    This ensures Pulse always gets its own clean session, never routing
+    into an existing conversation window.
 
-    Returns True on success, False on failure (window not found, etc.).
+    Returns True on success, False on failure.
     """
-    hwnd = _find_claude_window()
+    # Step 1: Open fresh tab
+    if not _open_new_claude_tab():
+        logger.error("inject_prompt: Failed to open new Claude tab.")
+        return False
+
+    # Step 2: Find the newest Claude window (our fresh tab)
+    hwnd = _find_newest_claude_window()
     if hwnd is None:
-        logger.error("inject_prompt: Claude window not found.")
+        logger.error("inject_prompt: Claude window not found after opening tab.")
         return False
 
-    if not _ensure_visible(hwnd):
-        logger.error("inject_prompt: Could not make Claude window interactable.")
-        return False
+    # Step 3: Ensure visible
+    _ensure_visible(hwnd)
 
-    # Click the window to focus the input area, without raising it over others
-    # We use SetForegroundWindow minimally then restore the previous foreground.
     prev_fg = win32gui.GetForegroundWindow()
     try:
-        # Bring Claude to the front briefly to allow text input
         win32gui.SetForegroundWindow(hwnd)
-        time.sleep(0.1)
+        time.sleep(0.2)
 
         if not _send_text_to_window(hwnd, text):
             return False
@@ -125,7 +142,7 @@ def inject_prompt(text: str, submit: bool = True) -> bool:
             if not _send_enter_to_window(hwnd):
                 return False
 
-        logger.info(f"inject_prompt: Sent {len(text)} chars, submit={submit}")
+        logger.info(f"inject_prompt: Sent {len(text)} chars to fresh tab, submit={submit}")
         return True
 
     except Exception as e:
@@ -133,7 +150,6 @@ def inject_prompt(text: str, submit: bool = True) -> bool:
         return False
 
     finally:
-        # Restore previous foreground window
         if prev_fg and prev_fg != hwnd:
             try:
                 win32gui.SetForegroundWindow(prev_fg)
@@ -142,17 +158,13 @@ def inject_prompt(text: str, submit: bool = True) -> bool:
 
 
 def get_claude_window_text() -> str | None:
-    """
-    Attempt to read visible text from the Claude window.
-    Returns the window title for now; full content reading via accessibility API
-    is not implemented — response parsing is done via clipboard in heartbeat.py.
-    """
-    hwnd = _find_claude_window()
+    """Return the window title of the newest Claude window."""
+    hwnd = _find_newest_claude_window()
     if hwnd is None:
         return None
     return win32gui.GetWindowText(hwnd)
 
 
 def is_claude_open() -> bool:
-    """Return True if the Claude desktop app window is currently open."""
-    return _find_claude_window() is not None
+    """Return True if any Claude window is currently open."""
+    return _find_newest_claude_window() is not None
