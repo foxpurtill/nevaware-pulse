@@ -8,11 +8,15 @@ routing into an existing conversation window.
 
 import time
 import logging
-import subprocess
 import webbrowser
+import pyautogui
 import win32gui
 import win32con
 import win32api
+
+# pyautogui safety
+pyautogui.FAILSAFE = False
+pyautogui.PAUSE = 0.02
 
 logger = logging.getLogger(__name__)
 
@@ -125,9 +129,8 @@ def _send_enter_to_window(hwnd: int) -> bool:
 
 def inject_prompt(text: str, submit: bool = True) -> bool:
     """
-    Open a fresh claude.ai/new tab, then inject the heartbeat prompt into it.
-    This ensures Pulse always gets its own clean session, never routing
-    into an existing conversation window.
+    Open a fresh claude.ai/new tab, focus it, then type the heartbeat
+    prompt using pyautogui — which works correctly with browser windows.
 
     Returns True on success, False on failure.
     """
@@ -136,41 +139,41 @@ def inject_prompt(text: str, submit: bool = True) -> bool:
         logger.error("inject_prompt: Failed to open new Claude tab.")
         return False
 
-    # Step 2: Find the newest Claude window (our fresh tab)
+    # Step 2: Find the browser Claude window
     hwnd = _find_newest_claude_window()
     if hwnd is None:
         logger.error("inject_prompt: Claude window not found after opening tab.")
         return False
 
-    # Step 3: Ensure visible
-    _ensure_visible(hwnd)
-
-    prev_fg = win32gui.GetForegroundWindow()
+    # Step 3: Bring window to foreground so pyautogui can type into it
     try:
+        win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
         win32gui.SetForegroundWindow(hwnd)
-        time.sleep(0.2)
-
-        if not _send_text_to_window(hwnd, text):
-            return False
-
-        if submit:
-            time.sleep(0.05)
-            if not _send_enter_to_window(hwnd):
-                return False
-
-        logger.info(f"inject_prompt: Sent {len(text)} chars to fresh tab, submit={submit}")
-        return True
-
+        time.sleep(1.5)  # Let Chrome settle and input field activate
     except Exception as e:
-        logger.error(f"inject_prompt: Exception — {e}")
-        return False
+        logger.warning(f"inject_prompt: Could not foreground window — {e}")
 
-    finally:
-        if prev_fg and prev_fg != hwnd:
-            try:
-                win32gui.SetForegroundWindow(prev_fg)
-            except Exception:
-                pass
+    # Step 4: Click the centre of the window to focus the input field
+    try:
+        rect = win32gui.GetWindowRect(hwnd)
+        cx = (rect[0] + rect[2]) // 2
+        cy = (rect[1] + rect[3]) // 2 + 150  # Slightly below centre — input area
+        pyautogui.click(cx, cy)
+        time.sleep(0.5)
+    except Exception as e:
+        logger.warning(f"inject_prompt: Click failed — {e}")
+
+    # Step 5: Type the prompt using pyautogui
+    try:
+        pyautogui.typewrite(text, interval=0.01)
+        if submit:
+            time.sleep(0.1)
+            pyautogui.press('enter')
+        logger.info(f"inject_prompt: Typed {len(text)} chars via pyautogui, submit={submit}")
+        return True
+    except Exception as e:
+        logger.error(f"inject_prompt: typewrite failed — {e}")
+        return False
 
 
 def get_claude_window_text() -> str | None:
