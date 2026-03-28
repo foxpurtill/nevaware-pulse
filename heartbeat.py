@@ -81,13 +81,6 @@ def _parse_next_interval(response_text: str, fallback: int) -> int:
     return fallback
 
 
-def _parse_restart_flag(response_text: str) -> bool:
-    """
-    Return True if the DI has signalled that a new session is needed.
-    DI writes 'restart:1' to the signal file when context is getting full.
-    """
-    return bool(re.search(r"restart\s*:\s*1", response_text, re.IGNORECASE))
-
 
 def _wait_for_restart_token(signal_path: Path, timeout: int = RESPONSE_TIMEOUT) -> tuple[bool, str]:
     """
@@ -226,8 +219,7 @@ class HeartbeatController:
         self._last_interval: int = config.get("default_interval_minutes", 30)
         self._module_instructions: str = ""
         self._signal_path_reminder_sent: bool = False
-        self._session_active: bool = False   # True once a session is open and running
-        self._needs_restart: bool = False    # Set when DI signals restart:1
+        self._first_beat: bool = True   # True until first beat fires; triggers context cache injection
 
         # Set log dir from config at construction time
         neve_dir = Path(config.get("neve_dir", "") or Path.home() / "Documents" / "Neve")
@@ -257,8 +249,7 @@ class HeartbeatController:
             if self._timer:
                 self._timer.cancel()
                 self._timer = None
-        self._session_active = False
-        self._needs_restart = False
+        self._first_beat = True
         _log("Heartbeat controller stopped.")
 
     def pause(self):
@@ -281,7 +272,6 @@ class HeartbeatController:
             neve_dir = Path(self.config.get("neve_dir", "") or Path.home() / "Documents" / "Neve")
             plan_path = neve_dir / "prompt-plan.md"
             self._clear_prompt_plan(plan_path)
-            self._session_active = False  # resume always opens a fresh session
             self._schedule_next(delay_minutes=self._last_interval)
 
     def _clear_prompt_plan(self, plan_path: Path):
@@ -349,17 +339,17 @@ class HeartbeatController:
         if not initial:
             _log(f"Next heartbeat in: {delay_minutes} mins")
 
-    def _build_heartbeat_prompt(self, new_session: bool = False) -> str:
+    def _build_heartbeat_prompt(self, first_beat: bool = False) -> str:
         """
         Build the § prompt from the DI's own prompt-plan.md plus random question pool nudges.
 
-        new_session=True  → include context cache (memory summary) at the top.
-                            Used on first beat of a session so DI has full context.
-        new_session=False → skip context cache. Session already has context in-window.
+        first_beat=True  → include context cache (memory summary) at the top.
+                           Used on the first beat after Pulse starts so DI has full context.
+        first_beat=False → skip context cache. Context already lives in the conversation window.
 
         Structure:
           § timestamp
-          [context cache — new sessions only]
+          [context cache — first beat of this Pulse run only]
           [custom_prompt.md if present — one-shot override, deleted after use]
           [otherwise: contents of prompt-plan.md — written by the DI at end of last beat]
           [3-4 randomly chosen lines from madlib-pool.md (Question Pool)]
@@ -388,11 +378,11 @@ class HeartbeatController:
             # Read the DI's own prompt plan
             plan_text = _read_prompt_plan(neve_dir)
 
-        # --- Context cache injection (new sessions only) ---
-        # Read pre-generated lean context (~400 tokens) on session start.
+        # --- Context cache injection (first beat of Pulse run only) ---
+        # Read pre-generated lean context (~400 tokens) on first beat.
         # Subsequent beats skip this — context already lives in the conversation window.
         context_cache = ""
-        if new_session:
+        if first_beat:
             cache_path = neve_dir / "neve_context_cache.md"
             if cache_path.exists():
                 try:
@@ -469,28 +459,23 @@ class HeartbeatController:
             if not self._running or self._paused:
                 return
 
-        open_new = not self._session_active or self._needs_restart
-        if open_new:
-            _log("Opening new Claude session (first beat or DI-requested restart).")
-            self._signal_path_reminder_sent = False  # re-send signal path reminder in fresh session
-        self._needs_restart = False
-
         # Check Claude is available before building the (potentially large) prompt
         if not neve_bridge.is_claude_open():
             _log("Warning: Claude window not found. Retrying after default interval.")
             self._schedule_next(delay_minutes=self._last_interval)
             return
 
-        prompt = self._build_heartbeat_prompt(new_session=open_new)
+        first_beat = self._first_beat
+        self._first_beat = False
+
+        prompt = self._build_heartbeat_prompt(first_beat=first_beat)
         _log(f"§ sent")
 
-        success = neve_bridge.inject_prompt(prompt, submit=True, new_session=open_new)
+        success = neve_bridge.inject_prompt(prompt, submit=True)
         if not success:
             _log("Warning: inject_prompt failed. Retrying after default interval.")
             self._schedule_next(delay_minutes=self._last_interval)
             return
-
-        self._session_active = True
 
         # Resolve signal file path
         neve_dir = Path(self.config.get("neve_dir", "") or Path.home() / "Documents" / "Neve")
@@ -510,11 +495,6 @@ class HeartbeatController:
         # Extract next interval
         next_interval = _parse_next_interval(response_text, fallback=self._last_interval)
         self._last_interval = next_interval
-
-        # Check if DI is requesting a fresh session next beat
-        if _parse_restart_flag(response_text):
-            self._needs_restart = True
-            _log("DI requested session restart — will open new conversation next beat.")
 
         # Log response summary (first 200 chars)
         summary = response_text[:200].replace("\n", " ").strip()

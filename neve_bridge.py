@@ -2,10 +2,9 @@
 neve_bridge.py — Window interaction layer for NeveWare-Pulse.
 
 Injects heartbeat prompts into Claude desktop app conversations.
-Opens a new conversation (Ctrl+N) only when requested — on first beat
-of a session or when the DI signals restart:1 for context overflow.
-Subsequent beats inject into the existing conversation to preserve context
-and avoid redundant memory reads.
+Always injects into the existing conversation — never opens a new one.
+Context cache is included on the first beat after Pulse starts (run-start),
+then omitted on subsequent beats since the context lives in-window.
 """
 
 import time
@@ -24,25 +23,6 @@ KEYSTROKE_DELAY = 0.05
 # Window title patterns to identify Claude windows
 CLAUDE_TITLE_PATTERNS = ["Claude", "claude"]
 
-
-def _open_new_claude_conversation(hwnd: int) -> bool:
-    """
-    Send Ctrl+N to the Claude desktop app to open a new conversation.
-    Returns True after sending and waiting for it to load.
-    """
-    try:
-        win32gui.SetForegroundWindow(hwnd)
-        time.sleep(0.3)
-        win32api.keybd_event(win32con.VK_CONTROL, 0, 0, 0)
-        win32api.keybd_event(ord('N'), 0, 0, 0)
-        win32api.keybd_event(ord('N'), 0, win32con.KEYEVENTF_KEYUP, 0)
-        win32api.keybd_event(win32con.VK_CONTROL, 0, win32con.KEYEVENTF_KEYUP, 0)
-        logger.info("Sent Ctrl+N to open new Claude conversation")
-        time.sleep(2.0)
-        return True
-    except Exception as e:
-        logger.error(f"_open_new_claude_conversation: {e}")
-        return False
 
 
 def _find_newest_claude_window() -> int | None:
@@ -121,16 +101,12 @@ def _send_enter_to_window(hwnd: int) -> bool:
     return True
 
 
-def inject_prompt(text: str, submit: bool = True, new_session: bool = False) -> bool:
+def inject_prompt(text: str, submit: bool = True) -> bool:
     """
-    Find the Claude desktop app and inject the heartbeat prompt.
-
-    new_session=True  → open a fresh Ctrl+N conversation first.
-                        Use on first beat of a run, or when DI signals restart:1.
-    new_session=False → inject into the existing conversation (default).
-                        Keeps session alive across beats, saving memory-read tokens.
+    Find the Claude window and inject the heartbeat prompt into the existing conversation.
+    Never opens a new conversation — always continues in the current chat.
     """
-    # Step 1: Find Claude desktop app window
+    # Step 1: Find Claude window
     hwnd = _find_newest_claude_window()
     if hwnd is None:
         logger.error("inject_prompt: Claude window not found.")
@@ -138,13 +114,7 @@ def inject_prompt(text: str, submit: bool = True, new_session: bool = False) -> 
 
     _ensure_visible(hwnd)
 
-    # Step 2: Open new conversation only when requested
-    if new_session:
-        if not _open_new_claude_conversation(hwnd):
-            logger.error("inject_prompt: Failed to open new conversation.")
-            return False
-
-    # Step 3: Send text via WM_CHAR (works in desktop app)
+    # Step 2: Send text via WM_CHAR
     prev_fg = win32gui.GetForegroundWindow()
     try:
         win32gui.SetForegroundWindow(hwnd)
@@ -158,7 +128,7 @@ def inject_prompt(text: str, submit: bool = True, new_session: bool = False) -> 
             if not _send_enter_to_window(hwnd):
                 return False
 
-        logger.info(f"inject_prompt: Sent {len(text)} chars, new_session={new_session}, submit={submit}")
+        logger.info(f"inject_prompt: Sent {len(text)} chars, submit={submit}")
         return True
 
     except Exception as e:
