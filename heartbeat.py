@@ -422,10 +422,12 @@ class HeartbeatController:
         _flag_block = ("\n".join(_flag_lines) + "\n\n") if _flag_lines else ""
 
         # Build prompt: cache header + flag block + DI's own plan
+        # §CONTINUING marker on beats 2+ signals that context is already in-window —
+        # skip memory DB reload, skip full identity reinit.
         if context_cache:
             prompt = f"{heartbeat_char} {timestamp}\n\n{context_cache}\n\n---\n\n{_flag_block}{plan_text}"
         else:
-            prompt = f"{heartbeat_char} {timestamp}\n\n{_flag_block}{plan_text}"
+            prompt = f"{heartbeat_char}CONTINUING {timestamp}\n\n{_flag_block}{plan_text}"
 
         if madlib_lines:
             prompt += "\n\n---\n" + "\n".join(f"- {l}" for l in madlib_lines)
@@ -440,6 +442,7 @@ class HeartbeatController:
             prompt += f"\n\n{spoken}"
 
         # Signal file path reminder — once per session so DI knows where to write
+        # Also explains §CONTINUING marker so DI skips memory reload on subsequent beats.
         if not self._signal_path_reminder_sent:
             signal_path = Path(
                 self.config.get("heartbeat_signal_path", "")
@@ -448,6 +451,7 @@ class HeartbeatController:
             prompt += (
                 f"\n\n[Pulse signal file: to trigger the next beat, write "
                 f"§restart\\nnext:N to {signal_path} via Desktop Commander]"
+                f"\n[§CONTINUING on future beats = same session, context in-window. Skip memory DB reload.]"
             )
             self._signal_path_reminder_sent = True
 
