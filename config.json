@@ -3,10 +3,10 @@
   "ai_name": "Neve",
   "active_color": "#44BB44",
   "inactive_color": "#FF4444",
-  "heartbeat_character": "Â§",
+  "heartbeat_character": "§",
   "default_interval_minutes": 5,
   "heartbeat_prompts": [],
-  "neve_dir": "C:\\Users\\foxap\\Documents\\Neve",
+  "neve_dir": "C:\\Users\\foxap\\Documents\\neve",
   "memory_path": "",
   "claude_app_path": "",
   "email_address": "neve.summersnow@gmail.com",
@@ -17,7 +17,9 @@
   "elevenlabs_api_key": "752ff869242c6e153c2c2ea81bc40be3abc4cf0a4be1fc8683b7b5790c28ef52",
   "emoji_hotkey": "ctrl+alt+e",
   "recent_emoji": [
+    "😊",
     "😂",
+    "😍",
     "😀",
     "Ã°Å¸Ëœâ‚¬"
   ],
@@ -61,5 +63,6 @@
       "voice_id": "21m00Tcm4TlvDq8ikWAM",
       "voice_name": "Rachel"
     }
-  }
+  },
+  "setup_complete": true
 }
